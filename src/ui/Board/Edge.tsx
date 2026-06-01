@@ -14,7 +14,7 @@ export default function Edge(props: {
       x2={b[0]}
       y2={b[1]}
       stroke={legal ? '#facc15' : color}
-      strokeWidth={owner || legal ? 0.16 : 0.06}
+      strokeWidth={owner || legal ? 0.12 : 0.045}
       strokeLinecap="round"
       className={legal ? 'cursor-pointer animate-pulse' : ''}
       role={legal ? 'button' : undefined}

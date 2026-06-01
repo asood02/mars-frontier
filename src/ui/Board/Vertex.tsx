@@ -18,23 +18,33 @@ export default function Vertex(props: {
       onClick={legal ? onClick : undefined}
     >
       {legal && (
-        <circle cx={pos[0]} cy={pos[1]} r={0.28} fill="#facc15" opacity={0.5} className="animate-pulse" />
+        <circle
+          cx={pos[0]}
+          cy={pos[1]}
+          r={0.13}
+          fill="#facc15"
+          fillOpacity={0.12}
+          stroke="#facc15"
+          strokeWidth={0.035}
+          strokeOpacity={0.85}
+          className="animate-pulse"
+        />
       )}
       {kind === 'HABITAT' && (
-        <circle cx={pos[0]} cy={pos[1]} r={0.2} fill={color} stroke="#0a0e1a" strokeWidth={0.04} />
+        <circle cx={pos[0]} cy={pos[1]} r={0.14} fill={color} stroke="#0a0e1a" strokeWidth={0.04} />
       )}
       {kind === 'DOME' && (
         <g>
-          <circle cx={pos[0]} cy={pos[1]} r={0.26} fill={color} stroke="#0a0e1a" strokeWidth={0.05} />
-          <circle cx={pos[0]} cy={pos[1]} r={0.12} fill="#0a0e1a" opacity={0.4} />
+          <circle cx={pos[0]} cy={pos[1]} r={0.19} fill={color} stroke="#0a0e1a" strokeWidth={0.045} />
+          <circle cx={pos[0]} cy={pos[1]} r={0.085} fill="#0a0e1a" opacity={0.45} />
         </g>
       )}
       {kind === 'COMM_TOWER' && (
         <rect
-          x={pos[0] - 0.16}
-          y={pos[1] - 0.16}
-          width={0.32}
-          height={0.32}
+          x={pos[0] - 0.12}
+          y={pos[1] - 0.12}
+          width={0.24}
+          height={0.24}
           fill={color}
           stroke="#0a0e1a"
           strokeWidth={0.04}

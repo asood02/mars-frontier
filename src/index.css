@@ -7,3 +7,23 @@ body {
   background: #0a0e1a;
   color: #e5e7eb;
 }
+
+@keyframes diceTumble {
+  0% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(-18deg) scale(1.12); }
+  50% { transform: rotate(14deg) scale(0.92); }
+  75% { transform: rotate(-9deg) scale(1.06); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+.dice-tumble {
+  animation: diceTumble 0.19s linear infinite;
+}
+
+@keyframes diceSettle {
+  0% { transform: scale(1.25); }
+  60% { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+.dice-settle {
+  animation: diceSettle 0.28s ease-out;
+}

@@ -25,7 +25,7 @@ export default function Game() {
         <div className="flex-1 flex items-center justify-center p-4">
           <Board />
         </div>
-        <aside className="w-80 shrink-0 overflow-y-auto p-4 space-y-4 border-l border-white/10">
+        <aside className="w-72 shrink-0 overflow-y-auto p-4 space-y-4 border-l border-white/10">
           <ResourceRail />
           <MissionPanel />
           <TechPanel />
