@@ -42,6 +42,8 @@ export function createGame(opts: CreateGameOptions): GameState {
     routes: [],
     dustStormHexId: null,
     lastRoll: null,
+    turnPhase: 'AWAIT_ROLL',
+    pendingDiscards: {},
     missionsOnBoard: deck.slice(0, 3),
     missionDeck: deck.slice(3),
     log: [],
