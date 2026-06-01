@@ -150,3 +150,55 @@ describe('7-roll resolution', () => {
     );
   });
 });
+
+function buildingKind(state: GameState, vertexId: string) {
+  return state.buildings.find((b) => b.vertexId === vertexId)?.kind;
+}
+
+describe('BUILD during play', () => {
+  function playState(): GameState {
+    const s = newGame();
+    s.phase = 'play';
+    s.turn = 1;
+    s.activePlayerId = 'p1';
+    s.turnPhase = 'ACTIONS';
+    const edge = g.edges[0];
+    const [v] = g.edgeVertices[edge];
+    s.buildings = [{ vertexId: v, ownerId: 'p1', kind: 'HABITAT' }];
+    s.routes = [{ edgeId: edge, ownerId: 'p1' }];
+    return s;
+  }
+
+  it('upgrades a Habitat to a Dome when affordable', () => {
+    const s = playState();
+    const v = s.buildings[0].vertexId;
+    s.players[0].resources = { O2: 0, H2O: 0, ORE: 2, ENG: 3, RES: 0 };
+    const r = applyMove(s, { type: 'BUILD', building: 'DOME', locationId: v }, 'p1');
+    expect(r.error).toBeUndefined();
+    expect(buildingKind(r.state, v)).toBe('DOME');
+    expect(r.state.players[0].resources).toEqual({ O2: 0, H2O: 0, ORE: 0, ENG: 0, RES: 0 });
+  });
+
+  it('rejects a Dome on a non-owned or non-Habitat location', () => {
+    const s = playState();
+    s.players[0].resources = { O2: 0, H2O: 0, ORE: 2, ENG: 3, RES: 0 };
+    const empty = g.vertices.find((x) => !s.buildings.some((b) => b.vertexId === x))!;
+    expect(applyMove(s, { type: 'BUILD', building: 'DOME', locationId: empty }, 'p1').error).toMatch(
+      /your own Habitat/i,
+    );
+  });
+
+  it('rejects a Habitat not on the player’s route', () => {
+    const s = playState();
+    s.players[0].resources = { O2: 1, H2O: 1, ORE: 1, ENG: 1, RES: 0 };
+    const offRoute = g.vertices.find(
+      (x) =>
+        !s.buildings.some((b) => b.vertexId === x) &&
+        !g.vertexNeighbors[s.buildings[0].vertexId].includes(x) &&
+        !g.edgeVertices[s.routes[0].edgeId].includes(x),
+    )!;
+    expect(
+      applyMove(s, { type: 'BUILD', building: 'HABITAT', locationId: offRoute }, 'p1').error,
+    ).toMatch(/Rover Route/i);
+  });
+});

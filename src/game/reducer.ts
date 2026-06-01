@@ -1,8 +1,15 @@
 import type { BoardGraph } from './board';
 import { buildBoardGraph } from './board';
 import type { GameState, Move, Resource } from './types';
-import { TERRAIN_RESOURCE, DUST_DISCARD_THRESHOLD, totalResources } from './types';
-import { routeAt, violatesDistanceRule } from './rules';
+import { TERRAIN_RESOURCE, DUST_DISCARD_THRESHOLD, totalResources, BUILDING_COST } from './types';
+import {
+  routeAt,
+  violatesDistanceRule,
+  buildingAt,
+  playerRouteEndpoints,
+  canAfford,
+  payCost,
+} from './rules';
 import { produce } from './production';
 
 export interface ApplyResult {
@@ -131,6 +138,8 @@ function applyPlay(g: BoardGraph, state: GameState, move: Move, playerId: string
       return handleDiscard(state, move, playerId);
     case 'MOVE_DUST_STORM':
       return handleMoveDustStorm(g, state, move, playerId);
+    case 'BUILD':
+      return handleBuild(g, state, move, playerId);
     default:
       return fail(state, `Move ${move.type} not handled yet.`);
   }
@@ -210,5 +219,62 @@ function handleMoveDustStorm(
   const next = clone(state);
   next.dustStormHexId = move.hexId;
   next.turnPhase = 'ACTIONS';
+  return { state: next };
+}
+
+function handleBuild(
+  g: BoardGraph,
+  state: GameState,
+  move: Extract<Move, { type: 'BUILD' }>,
+  playerId: string,
+): ApplyResult {
+  if (playerId !== state.activePlayerId) return fail(state, 'Not your turn.');
+  if (state.turnPhase !== 'ACTIONS') return fail(state, 'Roll before building.');
+  const idx = playerIndex(state, playerId);
+  const me = state.players[idx];
+
+  if (move.building === 'HABITAT') {
+    const v = move.locationId;
+    if (!g.vertices.includes(v)) return fail(state, 'Unknown vertex.');
+    if (violatesDistanceRule(g, state.buildings, v)) return fail(state, 'Too close to a building.');
+    const endpoints = playerRouteEndpoints(g, state.routes, playerId);
+    if (!endpoints.has(v)) return fail(state, 'Habitat must sit on your Rover Route.');
+    if (!canAfford(me.resources, BUILDING_COST.HABITAT)) return fail(state, 'Cannot afford Habitat.');
+    const next = clone(state);
+    next.players[idx].resources = payCost(me.resources, BUILDING_COST.HABITAT);
+    next.buildings.push({ vertexId: v, ownerId: playerId, kind: 'HABITAT' });
+    return { state: next };
+  }
+
+  if (move.building === 'DOME') {
+    const existing = buildingAt(state.buildings, move.locationId);
+    if (!existing || existing.ownerId !== playerId || existing.kind !== 'HABITAT') {
+      return fail(state, 'Dome must upgrade your own Habitat.');
+    }
+    if (!canAfford(me.resources, BUILDING_COST.DOME)) return fail(state, 'Cannot afford Dome.');
+    const next = clone(state);
+    next.players[idx].resources = payCost(me.resources, BUILDING_COST.DOME);
+    const b = buildingAt(next.buildings, move.locationId)!;
+    b.kind = 'DOME';
+    return { state: next };
+  }
+
+  // COMM_TOWER
+  if (me.hasCommTower) return fail(state, 'You already own a Comm Tower.');
+  const v = move.locationId;
+  if (!g.vertices.includes(v)) return fail(state, 'Unknown vertex.');
+  if (buildingAt(state.buildings, v)) return fail(state, 'Vertex is occupied.');
+  const adjacentOwn = g.vertexNeighbors[v].filter((n) => {
+    const b = buildingAt(state.buildings, n);
+    return b && b.ownerId === playerId;
+  }).length;
+  if (adjacentOwn < 2) return fail(state, 'Comm Tower needs 2 adjacent friendly buildings.');
+  if (!canAfford(me.resources, BUILDING_COST.COMM_TOWER)) {
+    return fail(state, 'Cannot afford Comm Tower.');
+  }
+  const next = clone(state);
+  next.players[idx].resources = payCost(me.resources, BUILDING_COST.COMM_TOWER);
+  next.buildings.push({ vertexId: v, ownerId: playerId, kind: 'COMM_TOWER' });
+  next.players[idx].hasCommTower = true;
   return { state: next };
 }
