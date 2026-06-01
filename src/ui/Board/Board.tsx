@@ -95,7 +95,7 @@ export default function Board() {
   return (
     <svg
       viewBox={`${vb.minX} ${vb.minY} ${vb.width} ${vb.height}`}
-      className="w-full h-full max-h-[78vh]"
+      className="w-full h-full max-h-[88vh]"
       role="img"
       aria-label="Mars Frontier board"
     >

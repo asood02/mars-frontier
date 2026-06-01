@@ -140,7 +140,7 @@ export function buildBoardGraph(): BoardGraph {
 
   const xs = Object.values(vertexPos).map((p) => p[0]);
   const ys = Object.values(vertexPos).map((p) => p[1]);
-  const pad = 1.2;
+  const pad = 0.6;
   const minX = Math.min(...xs) - pad;
   const minY = Math.min(...ys) - pad;
   const viewBox = {
