@@ -25,13 +25,19 @@ export function missionVP(state: GameState, playerId: string): number {
   return me.missions.reduce((sum, id) => sum + (missionById(id)?.vp ?? 0), 0);
 }
 
-// Total VP = buildings + longest route + tech + missions (spec §3.10).
+// VP earned by contributing to the Terraforming track (milestone rewards).
+export function terraformVP(state: GameState, playerId: string): number {
+  return state.terraformVP?.[playerId] ?? 0;
+}
+
+// Total VP = buildings + longest route + tech + missions + terraforming.
 export function playerVP(state: GameState, playerId: string): number {
   return (
     buildingVP(state, playerId) +
     longestRouteVP(state, playerId) +
     techVP(state, playerId) +
-    missionVP(state, playerId)
+    missionVP(state, playerId) +
+    terraformVP(state, playerId)
   );
 }
 

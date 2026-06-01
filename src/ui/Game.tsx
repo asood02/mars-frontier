@@ -4,6 +4,7 @@ import ResourceRail from './Hud/ResourceRail';
 import ActionBar from './Hud/ActionBar';
 import MissionPanel from './Hud/MissionPanel';
 import TechPanel from './Hud/TechPanel';
+import TerraformMeter from './Hud/TerraformMeter';
 import DiscardModal from './Hud/DiscardModal';
 import { useGame, canAct } from '../store';
 import { setupExpectation } from '../game/reducer';
@@ -64,6 +65,7 @@ export default function Game() {
         </div>
         <aside className="w-72 shrink-0 overflow-y-auto p-4 space-y-4 border-l border-white/10">
           <ResourceRail />
+          <TerraformMeter />
           <MissionPanel />
           <TechPanel />
         </aside>

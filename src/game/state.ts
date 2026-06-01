@@ -38,7 +38,13 @@ export function createGame(opts: CreateGameOptions): GameState {
   const deck = shuffle(MISSION_IDS, deckRand);
 
   const stats: Record<string, PlayerStats> = {};
-  for (const s of seats) stats[s.id] = emptyStats();
+  const terraformBy: Record<string, number> = {};
+  const terraformVP: Record<string, number> = {};
+  for (const s of seats) {
+    stats[s.id] = emptyStats();
+    terraformBy[s.id] = 0;
+    terraformVP[s.id] = 0;
+  }
 
   return {
     id: opts.id,
@@ -58,6 +64,9 @@ export function createGame(opts: CreateGameOptions): GameState {
     stats,
     missionsOnBoard: deck.slice(0, 3),
     missionDeck: deck.slice(3),
+    terraformIndex: 0,
+    terraformBy,
+    terraformVP,
     log: [],
     winnerId: null,
   };

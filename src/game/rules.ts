@@ -1,7 +1,14 @@
 import type { BoardGraph } from './board';
 import { buildBoardGraph, boardConfigForPlayers } from './board';
 import type { Building, Route, Resource, GameState, Move } from './types';
-import { RESOURCES, BUILDING_COST, MARKET_RATE_DEFAULT, MARKET_RATE_COMM } from './types';
+import {
+  RESOURCES,
+  BUILDING_COST,
+  MARKET_RATE_DEFAULT,
+  MARKET_RATE_COMM,
+  TERRAFORM_COST,
+  MAX_TERRAFORM,
+} from './types';
 
 // Best market rate (resources given per 1 received) for a player trading away
 // `give`: the base rate (3, or 2 with a Comm Tower / Open Market), improved to a
@@ -153,6 +160,11 @@ export function legalMoves(state: GameState, playerId: string): Move[] {
       ).length;
       if (adj >= 2) moves.push({ type: 'BUILD', building: 'COMM_TOWER', locationId: v });
     }
+  }
+
+  // Terraform
+  if (state.terraformIndex < MAX_TERRAFORM && canAfford(me.resources, TERRAFORM_COST)) {
+    moves.push({ type: 'TERRAFORM' });
   }
 
   // Market trades (rate accounts for Comm Tower / Open Market and trade depots)

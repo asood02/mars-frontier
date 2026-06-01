@@ -82,6 +82,10 @@ export interface GameState {
   stats: Record<string, PlayerStats>;
   missionDeck: string[]; // remaining face-down mission ids
   missionsOnBoard: string[]; // 3 visible mission ids
+  // Shared Terraforming track (spec: Mars signature mechanic).
+  terraformIndex: number; // 0 → MAX_TERRAFORM
+  terraformBy: Record<string, number>; // playerId -> increments contributed
+  terraformVP: Record<string, number>; // playerId -> VP earned from milestones
   log: GameEvent[];
   winnerId: string | null;
 }
@@ -103,6 +107,7 @@ export type Move =
   | { type: 'BUILD_ROUTE'; edgeId: string }
   | { type: 'RESEARCH'; techId: string }
   | { type: 'CLAIM_MISSION'; missionId: string }
+  | { type: 'TERRAFORM' }
   | { type: 'END_TURN' };
 
 export const RESOURCES: readonly Resource[] = ['O2', 'H2O', 'ORE', 'ENG', 'RES'];
@@ -147,4 +152,12 @@ export const MARKET_RATE_COMM = 2; // 2:1 with a Comm Tower
 export const WIN_VP = 10;
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 4;
+
+// Terraforming track: spend gases/water/energy to warm Mars. Crossing a
+// milestone scores the contributor VP; past LAKE_THAW_TI the Crater Lakes
+// melt and start producing water.
+export const MAX_TERRAFORM = 20;
+export const TERRAFORM_COST: Partial<Record<Resource, number>> = { O2: 1, H2O: 1, ENG: 1 };
+export const TERRAFORM_MILESTONES: readonly number[] = [7, 14, 20];
+export const LAKE_THAW_TI = 10;
 export const DUST_DISCARD_THRESHOLD = 7; // hands larger than this discard on a 7
