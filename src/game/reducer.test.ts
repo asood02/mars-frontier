@@ -110,3 +110,43 @@ describe('ROLL in play phase', () => {
     expect(r.state.pendingDiscards['p1']).toBe(4);
   });
 });
+
+describe('7-roll resolution', () => {
+  function sevenState(): GameState {
+    const s = newGame();
+    s.phase = 'play';
+    s.turn = 1;
+    s.activePlayerId = 'p1';
+    s.turnPhase = 'AWAIT_ROLL';
+    s.players[0].resources = { O2: 4, H2O: 4, ORE: 0, ENG: 0, RES: 0 }; // owes 4
+    return applyMove(s, { type: 'ROLL', roll: [3, 4] }, 'p1').state;
+  }
+
+  it('requires discarding exactly the owed count, then moves to MOVE_STORM', () => {
+    const s = sevenState();
+    expect(applyMove(s, { type: 'DISCARD', cards: { O2: 2 } }, 'p1').error).toMatch(/exactly 4/);
+    const ok = applyMove(s, { type: 'DISCARD', cards: { O2: 2, H2O: 2 } }, 'p1');
+    expect(ok.error).toBeUndefined();
+    expect(ok.state.turnPhase).toBe('MOVE_STORM');
+    expect(ok.state.players[0].resources.O2).toBe(2);
+  });
+
+  it('moves the dust storm to a new hex and enters ACTIONS', () => {
+    let s = sevenState();
+    s = applyMove(s, { type: 'DISCARD', cards: { O2: 2, H2O: 2 } }, 'p1').state;
+    const target = g.hexIds[0];
+    const r = applyMove(s, { type: 'MOVE_DUST_STORM', hexId: target }, 'p1');
+    expect(r.error).toBeUndefined();
+    expect(r.state.dustStormHexId).toBe(target);
+    expect(r.state.turnPhase).toBe('ACTIONS');
+  });
+
+  it('refuses to move the dust storm onto its current hex', () => {
+    let s = sevenState();
+    s = applyMove(s, { type: 'DISCARD', cards: { O2: 2, H2O: 2 } }, 'p1').state;
+    s.dustStormHexId = g.hexIds[0]; // already there, still in MOVE_STORM
+    expect(applyMove(s, { type: 'MOVE_DUST_STORM', hexId: g.hexIds[0] }, 'p1').error).toMatch(
+      /stay put/i,
+    );
+  });
+});

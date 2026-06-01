@@ -127,6 +127,10 @@ function applyPlay(g: BoardGraph, state: GameState, move: Move, playerId: string
   switch (move.type) {
     case 'ROLL':
       return handleRoll(g, state, move, playerId);
+    case 'DISCARD':
+      return handleDiscard(state, move, playerId);
+    case 'MOVE_DUST_STORM':
+      return handleMoveDustStorm(g, state, move, playerId);
     default:
       return fail(state, `Move ${move.type} not handled yet.`);
   }
@@ -162,6 +166,49 @@ function handleRoll(
     const d = delta[p.id];
     (Object.keys(d) as Resource[]).forEach((r) => (p.resources[r] += d[r]));
   }
+  next.turnPhase = 'ACTIONS';
+  return { state: next };
+}
+
+function handleDiscard(
+  state: GameState,
+  move: Extract<Move, { type: 'DISCARD' }>,
+  playerId: string,
+): ApplyResult {
+  if (state.turnPhase !== 'DISCARD') return fail(state, 'No discard required.');
+  const owed = state.pendingDiscards[playerId];
+  if (!owed) return fail(state, 'You owe no discard.');
+  const cards = move.cards;
+  const idx = playerIndex(state, playerId);
+  const res = state.players[idx].resources;
+  let total = 0;
+  for (const [r, amt] of Object.entries(cards) as [Resource, number][]) {
+    if (amt < 0) return fail(state, 'Negative discard.');
+    if (res[r] < amt) return fail(state, `Not enough ${r} to discard.`);
+    total += amt;
+  }
+  if (total !== owed) return fail(state, `You must discard exactly ${owed} cards.`);
+
+  const next = clone(state);
+  const nres = next.players[idx].resources;
+  for (const [r, amt] of Object.entries(cards) as [Resource, number][]) nres[r] -= amt;
+  delete next.pendingDiscards[playerId];
+  if (Object.keys(next.pendingDiscards).length === 0) next.turnPhase = 'MOVE_STORM';
+  return { state: next };
+}
+
+function handleMoveDustStorm(
+  g: BoardGraph,
+  state: GameState,
+  move: Extract<Move, { type: 'MOVE_DUST_STORM' }>,
+  playerId: string,
+): ApplyResult {
+  if (playerId !== state.activePlayerId) return fail(state, 'Not your turn.');
+  if (state.turnPhase !== 'MOVE_STORM') return fail(state, 'Not time to move the Dust Storm.');
+  if (!g.hexIds.includes(move.hexId)) return fail(state, 'Unknown hex.');
+  if (move.hexId === state.dustStormHexId) return fail(state, 'Dust Storm cannot stay put.');
+  const next = clone(state);
+  next.dustStormHexId = move.hexId;
   next.turnPhase = 'ACTIONS';
   return { state: next };
 }
