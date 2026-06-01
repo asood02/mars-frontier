@@ -8,7 +8,7 @@ import {
   canAfford,
   payCost,
 } from './rules';
-import type { GameState, Building, Route } from './types';
+import type { Building, Route } from './types';
 import { emptyResources } from './types';
 
 const g = buildBoardGraph();

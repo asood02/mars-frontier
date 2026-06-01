@@ -83,3 +83,30 @@ describe('setup placement', () => {
     expect(totalP2).toBeGreaterThanOrEqual(0);
   });
 });
+
+describe('ROLL in play phase', () => {
+  it('rejects a roll out of turn or after already rolling', () => {
+    const s = newGame();
+    s.phase = 'play';
+    s.turn = 1;
+    s.activePlayerId = 'p1';
+    s.turnPhase = 'AWAIT_ROLL';
+    expect(applyMove(s, { type: 'ROLL', roll: [3, 4] }, 'p2').error).toMatch(/your turn/i);
+    const rolled = applyMove(s, { type: 'ROLL', roll: [3, 5] }, 'p1');
+    expect(rolled.error).toBeUndefined();
+    expect(rolled.state.turnPhase).toBe('ACTIONS');
+    expect(applyMove(rolled.state, { type: 'ROLL', roll: [2, 2] }, 'p1').error).toMatch(/already/i);
+  });
+
+  it('a 7 with a big hand moves to DISCARD', () => {
+    const s = newGame();
+    s.phase = 'play';
+    s.turn = 1;
+    s.activePlayerId = 'p1';
+    s.turnPhase = 'AWAIT_ROLL';
+    s.players[0].resources = { O2: 4, H2O: 4, ORE: 0, ENG: 0, RES: 0 }; // 8 cards
+    const r = applyMove(s, { type: 'ROLL', roll: [3, 4] }, 'p1');
+    expect(r.state.turnPhase).toBe('DISCARD');
+    expect(r.state.pendingDiscards['p1']).toBe(4);
+  });
+});

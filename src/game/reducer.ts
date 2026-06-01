@@ -1,8 +1,9 @@
 import type { BoardGraph } from './board';
 import { buildBoardGraph } from './board';
 import type { GameState, Move, Resource } from './types';
-import { TERRAIN_RESOURCE } from './types';
+import { TERRAIN_RESOURCE, DUST_DISCARD_THRESHOLD, totalResources } from './types';
 import { routeAt, violatesDistanceRule } from './rules';
+import { produce } from './production';
 
 export interface ApplyResult {
   state: GameState;
@@ -119,6 +120,48 @@ export function applyMove(state: GameState, move: Move, playerId: string): Apply
   }
   if (state.phase === 'gameover') return fail(state, 'Game is over.');
   if (state.phase === 'lobby') return fail(state, 'Game has not started.');
-  // play-phase handlers are added in later tasks
-  return fail(state, `Move ${move.type} not handled yet.`);
+  return applyPlay(g, state, move, playerId);
+}
+
+function applyPlay(g: BoardGraph, state: GameState, move: Move, playerId: string): ApplyResult {
+  switch (move.type) {
+    case 'ROLL':
+      return handleRoll(g, state, move, playerId);
+    default:
+      return fail(state, `Move ${move.type} not handled yet.`);
+  }
+}
+
+function handleRoll(
+  g: BoardGraph,
+  state: GameState,
+  move: Extract<Move, { type: 'ROLL' }>,
+  playerId: string,
+): ApplyResult {
+  if (playerId !== state.activePlayerId) return fail(state, 'Not your turn.');
+  if (state.turnPhase !== 'AWAIT_ROLL') return fail(state, 'You have already rolled.');
+  const [d1, d2] = move.roll;
+  if (d1 < 1 || d1 > 6 || d2 < 1 || d2 > 6) return fail(state, 'Invalid dice.');
+  const sum = d1 + d2;
+  const next = clone(state);
+  next.lastRoll = [d1, d2];
+
+  if (sum === 7) {
+    const pending: Record<string, number> = {};
+    for (const p of next.players) {
+      const n = totalResources(p.resources);
+      if (n > DUST_DISCARD_THRESHOLD) pending[p.id] = Math.floor(n / 2);
+    }
+    next.pendingDiscards = pending;
+    next.turnPhase = Object.keys(pending).length > 0 ? 'DISCARD' : 'MOVE_STORM';
+    return { state: next };
+  }
+
+  const delta = produce(g, next, sum);
+  for (const p of next.players) {
+    const d = delta[p.id];
+    (Object.keys(d) as Resource[]).forEach((r) => (p.resources[r] += d[r]));
+  }
+  next.turnPhase = 'ACTIONS';
+  return { state: next };
 }
