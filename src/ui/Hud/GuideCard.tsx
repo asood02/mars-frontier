@@ -94,6 +94,15 @@ export default function GuideCard() {
             </div>
           ))}
         </div>
+
+        {/* Trade depots */}
+        <h2 className="font-display text-2xl text-mars mt-8 mb-3">Trade Depots</h2>
+        <p className="text-sm text-white/60 leading-relaxed">
+          Coastal depots on the board let you trade at a better rate. Build a Habitat or Dome on a
+          depot to use it: a resource depot trades that resource <b className="text-white/80">2:1</b>,
+          and a <span className="text-white/80">★</span> depot trades <b className="text-white/80">2:1</b>{' '}
+          on any resource. Otherwise the market is 3:1 (2:1 with a Comm Tower).
+        </p>
       </div>
     </div>
   );

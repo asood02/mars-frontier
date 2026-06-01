@@ -49,10 +49,19 @@ export interface PlayerState {
   hasCommTower: boolean;
 }
 
+// A coastal trade depot. A player with a Habitat/Dome on this vertex trades at
+// `rate`:1 — for a specific `resource`, or any resource when `resource` is null.
+export interface Port {
+  vertexId: string;
+  resource: Resource | null; // null = generic (any resource)
+  rate: number; // resources given per 1 received (e.g. 2 → 2:1)
+}
+
 export interface BoardData {
   hexes: Hex[];
   vertices: string[];
   edges: string[];
+  ports: Port[];
 }
 
 export interface GameState {

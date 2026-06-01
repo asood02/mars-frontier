@@ -1,7 +1,26 @@
 import type { BoardGraph } from './board';
 import { buildBoardGraph, boardConfigForPlayers } from './board';
 import type { Building, Route, Resource, GameState, Move } from './types';
-import { RESOURCES, BUILDING_COST } from './types';
+import { RESOURCES, BUILDING_COST, MARKET_RATE_DEFAULT, MARKET_RATE_COMM } from './types';
+
+// Best market rate (resources given per 1 received) for a player trading away
+// `give`: the base rate (3, or 2 with a Comm Tower / Open Market), improved to a
+// trade depot's rate when the player has a Habitat/Dome on a matching port.
+export function marketRateFor(state: GameState, playerId: string, give: Resource): number {
+  const me = state.players.find((p) => p.id === playerId);
+  if (!me) return MARKET_RATE_DEFAULT;
+  let rate =
+    me.hasCommTower || me.techs.includes('ASTRO3') ? MARKET_RATE_COMM : MARKET_RATE_DEFAULT;
+  const ports = state.board.ports ?? [];
+  for (const b of state.buildings) {
+    if (b.ownerId !== playerId || b.kind === 'COMM_TOWER') continue;
+    const port = ports.find((p) => p.vertexId === b.vertexId);
+    if (port && (port.resource === null || port.resource === give)) {
+      rate = Math.min(rate, port.rate);
+    }
+  }
+  return rate;
+}
 
 export function buildingAt(buildings: Building[], vertexId: string): Building | undefined {
   return buildings.find((b) => b.vertexId === vertexId);
@@ -136,10 +155,9 @@ export function legalMoves(state: GameState, playerId: string): Move[] {
     }
   }
 
-  // Market trades
-  const rate = me.hasCommTower ? 2 : 3;
+  // Market trades (rate accounts for Comm Tower / Open Market and trade depots)
   for (const give of RESOURCES) {
-    if (me.resources[give] < rate) continue;
+    if (me.resources[give] < marketRateFor(state, playerId, give)) continue;
     for (const receive of RESOURCES) {
       if (give !== receive) moves.push({ type: 'TRADE_MARKET', give, receive });
     }

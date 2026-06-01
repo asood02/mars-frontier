@@ -78,12 +78,12 @@ describe('relay rooms', () => {
     const created = createRoom(rooms, 'A', () => 0, 3)[0].msg;
     expect(created.capacity).toBe(3);
     const j1 = joinRoom(rooms, 'B', created.code as string);
-    expect(j1.find((d: any) => d.to === 'B').msg.seat).toBe(1);
+    expect(j1.find((d: any) => d.to === 'B')!.msg.seat).toBe(1);
     // host A is notified with the new roster count
-    expect(j1.find((d: any) => d.to === 'A').msg.filled).toBe(2);
+    expect(j1.find((d: any) => d.to === 'A')!.msg.filled).toBe(2);
     const j2 = joinRoom(rooms, 'C', created.code as string);
-    expect(j2.find((d: any) => d.to === 'C').msg.seat).toBe(2);
-    expect(j2.find((d: any) => d.to === 'C').msg.filled).toBe(3);
+    expect(j2.find((d: any) => d.to === 'C')!.msg.seat).toBe(2);
+    expect(j2.find((d: any) => d.to === 'C')!.msg.filled).toBe(3);
     // a 4th joiner is rejected (room now full)
     expect(joinRoom(rooms, 'D', created.code as string)[0].msg.message).toMatch(/full/i);
   });
