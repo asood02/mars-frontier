@@ -202,3 +202,47 @@ describe('BUILD during play', () => {
     ).toMatch(/Rover Route/i);
   });
 });
+
+describe('BUILD_ROUTE during play', () => {
+  function playState(): GameState {
+    const s = newGame();
+    s.phase = 'play';
+    s.turn = 1;
+    s.activePlayerId = 'p1';
+    s.turnPhase = 'ACTIONS';
+    const edge = g.edges[0];
+    const [v] = g.edgeVertices[edge];
+    s.buildings = [{ vertexId: v, ownerId: 'p1', kind: 'HABITAT' }];
+    s.routes = [{ edgeId: edge, ownerId: 'p1' }];
+    s.players[0].resources = { O2: 0, H2O: 0, ORE: 5, ENG: 5, RES: 0 };
+    return s;
+  }
+
+  it('extends the network and charges 1 ORE + 1 ENG', () => {
+    const s = playState();
+    const start = s.buildings[0].vertexId;
+    const nextEdge = g.vertexEdges[start].find((e) => e !== s.routes[0].edgeId)!;
+    const r = applyMove(s, { type: 'BUILD_ROUTE', edgeId: nextEdge }, 'p1');
+    expect(r.error).toBeUndefined();
+    expect(r.state.routes).toHaveLength(2);
+    expect(r.state.players[0].resources.ORE).toBe(4);
+    expect(r.state.players[0].resources.ENG).toBe(4);
+  });
+
+  it('rejects a disconnected route', () => {
+    const s = playState();
+    const farEdge = g.edges.find(
+      (e) =>
+        !g.edgeVertices[e].includes(s.buildings[0].vertexId) &&
+        !g.edgeVertices[s.routes[0].edgeId].some((v) => g.edgeVertices[e].includes(v)),
+    )!;
+    expect(applyMove(s, { type: 'BUILD_ROUTE', edgeId: farEdge }, 'p1').error).toMatch(/touch/i);
+  });
+
+  it('rejects building on an occupied edge', () => {
+    const s = playState();
+    expect(applyMove(s, { type: 'BUILD_ROUTE', edgeId: s.routes[0].edgeId }, 'p1').error).toMatch(
+      /already/i,
+    );
+  });
+});

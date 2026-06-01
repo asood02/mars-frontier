@@ -140,6 +140,8 @@ function applyPlay(g: BoardGraph, state: GameState, move: Move, playerId: string
       return handleMoveDustStorm(g, state, move, playerId);
     case 'BUILD':
       return handleBuild(g, state, move, playerId);
+    case 'BUILD_ROUTE':
+      return handleBuildRoute(g, state, move, playerId);
     default:
       return fail(state, `Move ${move.type} not handled yet.`);
   }
@@ -276,5 +278,32 @@ function handleBuild(
   next.players[idx].resources = payCost(me.resources, BUILDING_COST.COMM_TOWER);
   next.buildings.push({ vertexId: v, ownerId: playerId, kind: 'COMM_TOWER' });
   next.players[idx].hasCommTower = true;
+  return { state: next };
+}
+
+function handleBuildRoute(
+  g: BoardGraph,
+  state: GameState,
+  move: Extract<Move, { type: 'BUILD_ROUTE' }>,
+  playerId: string,
+): ApplyResult {
+  if (playerId !== state.activePlayerId) return fail(state, 'Not your turn.');
+  if (state.turnPhase !== 'ACTIONS') return fail(state, 'Roll before building.');
+  const e = move.edgeId;
+  if (!g.edges.includes(e)) return fail(state, 'Unknown edge.');
+  if (routeAt(state.routes, e)) return fail(state, 'Edge already has a route.');
+  const [a, b] = g.edgeVertices[e];
+  const eps = playerRouteEndpoints(g, state.routes, playerId);
+  const touchesOwn =
+    [a, b].some((v) => buildingAt(state.buildings, v)?.ownerId === playerId) ||
+    eps.has(a) ||
+    eps.has(b);
+  if (!touchesOwn) return fail(state, 'Route must touch your network.');
+  const idx = playerIndex(state, playerId);
+  const me = state.players[idx];
+  if (!canAfford(me.resources, BUILDING_COST.ROUTE)) return fail(state, 'Cannot afford Route.');
+  const next = clone(state);
+  next.players[idx].resources = payCost(me.resources, BUILDING_COST.ROUTE);
+  next.routes.push({ edgeId: e, ownerId: playerId });
   return { state: next };
 }
