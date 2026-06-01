@@ -169,17 +169,17 @@ export default function Hex(props: {
           <circle
             cx={cx}
             cy={cy - 0.46}
-            r={0.17}
-            fill="#160b06d9"
+            r={0.245}
+            fill="#160b06e0"
             stroke={RESOURCE_META[meta.produces].color}
-            strokeWidth={0.03}
+            strokeWidth={0.04}
           />
           <text
             x={cx}
             y={cy - 0.45}
             textAnchor="middle"
             dominantBaseline="central"
-            fontSize={0.17}
+            fontSize={0.24}
             fontWeight="bold"
             fill={RESOURCE_META[meta.produces].color}
           >

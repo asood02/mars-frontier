@@ -69,6 +69,7 @@ interface GameStore {
   roomCode: string | null;
   connection: Connection;
   tutorialOpen: boolean;
+  guideOpen: boolean;
 
   newLocalGame: (seed?: number) => void;
   hostOnline: () => void;
@@ -79,6 +80,8 @@ interface GameStore {
   roll: () => void;
   openTutorial: () => void;
   closeTutorial: () => void;
+  openGuide: () => void;
+  closeGuide: () => void;
 }
 
 export const useGame = create<GameStore>((set, get) => {
@@ -138,6 +141,7 @@ export const useGame = create<GameStore>((set, get) => {
     roomCode: null,
     connection: 'idle',
     tutorialOpen: false,
+    guideOpen: false,
 
     newLocalGame: (seed = Math.floor(Math.random() * 1e9)) => {
       teardownTransport();
@@ -252,6 +256,9 @@ export const useGame = create<GameStore>((set, get) => {
       }
       set({ tutorialOpen: false });
     },
+
+    openGuide: () => set({ guideOpen: true }),
+    closeGuide: () => set({ guideOpen: false }),
   };
 });
 

@@ -1,5 +1,5 @@
 import { useGame, viewerId } from '../../store';
-import { RESOURCE_META } from '../format';
+import { RESOURCE_META, resourceHelp } from '../format';
 import { RESOURCES } from '../../game/types';
 
 export default function ResourceRail() {
@@ -15,7 +15,7 @@ export default function ResourceRail() {
         {RESOURCES.map((r) => (
           <div
             key={r}
-            title={RESOURCE_META[r].label}
+            title={resourceHelp(r)}
             className="flex flex-col items-center rounded-xl bg-black/30 py-2"
           >
             <span style={{ color: RESOURCE_META[r].color }} className="text-base leading-none">
