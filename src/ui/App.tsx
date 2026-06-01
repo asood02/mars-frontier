@@ -4,10 +4,12 @@ import Lobby from './Lobby';
 import Game from './Game';
 import GameOver from './GameOver';
 import Tutorial from './Tutorial';
+import GuideCard from './Hud/GuideCard';
 
 export default function App() {
   const screen = useGame((s) => s.screen);
   const tutorialOpen = useGame((s) => s.tutorialOpen);
+  const guideOpen = useGame((s) => s.guideOpen);
   return (
     <div
       className="min-h-screen text-white relative overflow-hidden"
@@ -24,6 +26,7 @@ export default function App() {
         {screen === 'gameover' && <GameOver />}
       </div>
       {tutorialOpen && <Tutorial />}
+      {guideOpen && <GuideCard />}
     </div>
   );
 }
