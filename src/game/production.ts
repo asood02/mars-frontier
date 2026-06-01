@@ -1,6 +1,6 @@
 import type { BoardGraph } from './board';
 import type { GameState, Resource, PlayerState } from './types';
-import { TERRAIN_RESOURCE, emptyResources } from './types';
+import { TERRAIN_RESOURCE, emptyResources, LAKE_THAW_TI } from './types';
 import { buildingAt } from './rules';
 
 function playerOf(state: GameState, id: string): PlayerState {
@@ -29,14 +29,17 @@ export function produce(
   for (const hex of state.board.hexes) {
     if (hex.number !== rollSum) continue;
     if (hex.id === state.dustStormHexId) continue;
-    if (hex.terrain === 'LAKE') continue;
+    // Crater Lakes are barren until terraforming thaws them into water sources.
+    if (hex.terrain === 'LAKE' && state.terraformIndex < LAKE_THAW_TI) continue;
 
     if (hex.terrain === 'LAB') {
       delta[state.activePlayerId].RES += 1; // global to active player (spec §3.1)
       continue;
     }
 
-    const res = TERRAIN_RESOURCE[hex.terrain] as Resource | undefined;
+    const res = (hex.terrain === 'LAKE' ? 'H2O' : TERRAIN_RESOURCE[hex.terrain]) as
+      | Resource
+      | undefined;
     if (!res) continue;
     for (const v of g.hexVertices[hex.id]) {
       const b = buildingAt(state.buildings, v);
@@ -66,9 +69,12 @@ export function produceOnSeven(
     if (b.ownerId !== playerId || b.kind === 'COMM_TOWER') continue;
     for (const hid of g.vertexHexes[b.vertexId]) {
       const hex = state.board.hexes.find((h) => h.id === hid);
-      if (!hex || hex.id === state.dustStormHexId || hex.terrain === 'LAKE') continue;
+      if (!hex || hex.id === state.dustStormHexId) continue;
+      if (hex.terrain === 'LAKE' && state.terraformIndex < LAKE_THAW_TI) continue;
       if (hex.terrain === 'LAB') continue; // labs are global-only
-      const res = TERRAIN_RESOURCE[hex.terrain] as Resource | undefined;
+      const res = (hex.terrain === 'LAKE' ? 'H2O' : TERRAIN_RESOURCE[hex.terrain]) as
+        | Resource
+        | undefined;
       if (!res) continue;
       out[res] += yieldFor(owner, b.kind, hex.terrain);
       if (hex.terrain === 'ICE' && b.kind === 'HABITAT' && owner.techs.includes('BIO4')) {

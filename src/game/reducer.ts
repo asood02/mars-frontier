@@ -6,6 +6,9 @@ import {
   DUST_DISCARD_THRESHOLD,
   totalResources,
   BUILDING_COST,
+  TERRAFORM_COST,
+  MAX_TERRAFORM,
+  TERRAFORM_MILESTONES,
 } from './types';
 import {
   routeAt,
@@ -166,6 +169,8 @@ function applyPlay(g: BoardGraph, state: GameState, move: Move, playerId: string
       return handleResearch(state, move, playerId);
     case 'CLAIM_MISSION':
       return handleClaimMission(state, move, playerId);
+    case 'TERRAFORM':
+      return handleTerraform(state, playerId);
     default: {
       const _exhaustive: never = move;
       return fail(state, `Unhandled move: ${JSON.stringify(_exhaustive)}`);
@@ -447,6 +452,27 @@ function handleClaimMission(
   next.missionsOnBoard = next.missionsOnBoard.filter((m) => m !== def.id);
   const drawn = next.missionDeck.shift();
   if (drawn) next.missionsOnBoard.push(drawn);
+  return { state: next };
+}
+
+function handleTerraform(state: GameState, playerId: string): ApplyResult {
+  if (playerId !== state.activePlayerId) return fail(state, 'Not your turn.');
+  if (state.turnPhase !== 'ACTIONS') return fail(state, 'Roll before terraforming.');
+  if (state.terraformIndex >= MAX_TERRAFORM) return fail(state, 'Mars is fully terraformed.');
+  const idx = playerIndex(state, playerId);
+  const me = state.players[idx];
+  if (!canAfford(me.resources, TERRAFORM_COST)) return fail(state, 'Cannot afford to terraform.');
+
+  const next = clone(state);
+  next.players[idx].resources = payCost(me.resources, TERRAFORM_COST);
+  next.players[idx].resources.RES += 1; // terraforming yields science
+  next.terraformIndex += 1;
+  next.terraformBy[playerId] = (next.terraformBy[playerId] ?? 0) + 1;
+  // Crossing a milestone scores the contributor (the final one is worth 2).
+  if (TERRAFORM_MILESTONES.includes(next.terraformIndex)) {
+    const reward = next.terraformIndex >= MAX_TERRAFORM ? 2 : 1;
+    next.terraformVP[playerId] = (next.terraformVP[playerId] ?? 0) + reward;
+  }
   return { state: next };
 }
 

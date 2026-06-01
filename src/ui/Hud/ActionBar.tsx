@@ -3,6 +3,7 @@ import { useGame, canAct } from '../../store';
 import type { Interaction } from '../../store';
 import Dice from './Dice';
 import { isMuted, setMuted } from '../../sound';
+import { MAX_TERRAFORM } from '../../game/types';
 
 const BUILD_BUTTONS: { mode: Interaction; label: string }[] = [
   { mode: 'habitat', label: 'Habitat' },
@@ -47,6 +48,14 @@ export default function ActionBar() {
           Move Dust Storm
         </button>
       )}
+      <button
+        disabled={!inActions || game.terraformIndex >= MAX_TERRAFORM}
+        onClick={() => dispatch({ type: 'TERRAFORM' })}
+        title="Spend 1 Oxygen + 1 Water + 1 Energy to raise the Terraforming track (+1 Research)"
+        className="font-display text-sm px-4 py-2 rounded-full border border-cyan/50 text-cyan hover:bg-cyan/10 transition disabled:opacity-30"
+      >
+        Terraform
+      </button>
       <div className="flex-1" />
       <button
         onClick={() => {

@@ -1,8 +1,13 @@
 # Mars Frontier
 
-A 2-player online strategic colony-builder set on Mars — a Catan-inspired hex-and-resource core
-loop redesigned for tight 2-player play with a Mission Card race, a Tech Tree, and a Dust Storm.
-First to **10 victory points** wins.
+A **2–4 player** online strategic colony-builder set on Mars — a Catan-inspired hex-and-resource
+core loop with a Mission Card race, a Tech Tree, a Dust Storm, coastal **trade depots**, and a
+shared **Terraforming** track. The board scales with the player count. First to **10 victory
+points** wins.
+
+Victory points come from buildings, the longest rover route, tech, mission cards, and contributing
+to terraforming (each milestone you cross scores VP). Trade depots on the coast give 2:1 trades, and
+once terraforming warms the planet the Crater Lakes thaw into water sources.
 
 ## Stack
 
