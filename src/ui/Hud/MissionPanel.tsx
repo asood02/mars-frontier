@@ -1,10 +1,11 @@
-import { useGame } from '../../store';
+import { useGame, canAct } from '../../store';
 import { missionById, missionCtx } from '../../game/missions';
 
 export default function MissionPanel() {
   const game = useGame((s) => s.game)!;
   const dispatch = useGame((s) => s.dispatch);
-  const canClaim = game.phase === 'play' && game.turnPhase === 'ACTIONS';
+  const act = useGame(canAct);
+  const canClaim = game.phase === 'play' && game.turnPhase === 'ACTIONS' && act;
   return (
     <div className="rounded-2xl bg-white/5 backdrop-blur border border-white/10 p-4">
       <div className="text-xs uppercase tracking-widest text-white/40 mb-3">Missions</div>

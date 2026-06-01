@@ -1,4 +1,4 @@
-import { useGame } from '../../store';
+import { useGame, canAct } from '../../store';
 import type { Interaction } from '../../store';
 import Dice from './Dice';
 
@@ -15,9 +15,10 @@ export default function ActionBar() {
   const setInteraction = useGame((s) => s.setInteraction);
   const dispatch = useGame((s) => s.dispatch);
   const error = useGame((s) => s.error);
+  const act = useGame(canAct);
 
-  const inActions = game.phase === 'play' && game.turnPhase === 'ACTIONS';
-  const inStorm = game.phase === 'play' && game.turnPhase === 'MOVE_STORM';
+  const inActions = game.phase === 'play' && game.turnPhase === 'ACTIONS' && act;
+  const inStorm = game.phase === 'play' && game.turnPhase === 'MOVE_STORM' && act;
 
   return (
     <div className="bg-white/5 backdrop-blur border-t border-white/10 px-6 py-3 flex flex-wrap items-center gap-3">

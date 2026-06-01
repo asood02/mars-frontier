@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { buildBoardGraph } from '../../game/board';
-import { useGame } from '../../store';
+import { useGame, canAct } from '../../store';
 import { legalMoves, violatesDistanceRule } from '../../game/rules';
 import { setupExpectation } from '../../game/reducer';
 import Hex from './Hex';
@@ -14,12 +14,13 @@ export default function Board() {
   const game = useGame((s) => s.game)!;
   const interaction = useGame((s) => s.interaction);
   const dispatch = useGame((s) => s.dispatch);
+  const act = useGame(canAct);
 
-  const setup = game.phase === 'setup1' || game.phase === 'setup2';
+  const setup = (game.phase === 'setup1' || game.phase === 'setup2') && act;
   const exp = setup ? setupExpectation(game) : null;
 
   // Play-phase legal targets, derived from the reducer's own enumeration.
-  const moves = setup ? [] : legalMoves(game, game.activePlayerId);
+  const moves = setup || !act ? [] : legalMoves(game, game.activePlayerId);
   const hasBuild = (b: string) =>
     new Set(
       moves
@@ -103,7 +104,7 @@ export default function Board() {
       {g.hexIds.map((hid) => {
         const hex = game.board.hexes.find((h) => h.id === hid)!;
         const [cx, cy] = g.hexPos[hid];
-        const stormTarget = interaction === 'storm' && game.dustStormHexId !== hid;
+        const stormTarget = interaction === 'storm' && act && game.dustStormHexId !== hid;
         return (
           <g
             key={hid}

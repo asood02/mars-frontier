@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { useGame } from '../../store';
+import { useGame, canAct } from '../../store';
 
 export default function Dice() {
   const game = useGame((s) => s.game)!;
   const roll = useGame((s) => s.roll);
-  const canRoll = game.phase === 'play' && game.turnPhase === 'AWAIT_ROLL';
+  const act = useGame(canAct);
+  const canRoll = game.phase === 'play' && game.turnPhase === 'AWAIT_ROLL' && act;
 
   const [rolling, setRolling] = useState(false);
   const [faces, setFaces] = useState<[number, number]>([1, 1]);

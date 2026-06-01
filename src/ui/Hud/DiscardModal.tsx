@@ -7,7 +7,12 @@ import { RESOURCE_META } from '../format';
 export default function DiscardModal() {
   const game = useGame((s) => s.game)!;
   const dispatch = useGame((s) => s.dispatch);
-  const owingId = Object.keys(game.pendingDiscards)[0];
+  const mode = useGame((s) => s.mode);
+  const myPlayerId = useGame((s) => s.myPlayerId);
+  const owers = Object.keys(game.pendingDiscards);
+  // Online: only resolve your own discard. Local hotseat: one ower at a time.
+  const owingId =
+    mode === 'online' ? (myPlayerId && owers.includes(myPlayerId) ? myPlayerId : undefined) : owers[0];
   const [draft, setDraft] = useState<Record<Resource, number>>({
     O2: 0,
     H2O: 0,
