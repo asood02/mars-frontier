@@ -9,9 +9,9 @@ export function buildingVP(state: GameState, playerId: string): number {
     .reduce((sum, b) => sum + (BUILDING_VP[b.kind] ?? 0), 0);
 }
 
-// Plan 2 total VP = buildings only. Plan 3 adds tech, missions, and longest route.
+// Total VP = buildings + longest route (tech & missions folded in by later tasks).
 export function playerVP(state: GameState, playerId: string): number {
-  return buildingVP(state, playerId);
+  return buildingVP(state, playerId) + longestRouteVP(state, playerId);
 }
 
 // Longest contiguous chain (trail; no edge reused) of a player's routes.
@@ -46,4 +46,34 @@ export function longestRouteLength(g: BoardGraph, routes: Route[], playerId: str
     dfs(b, new Set(), 0);
   }
   return best;
+}
+
+export const LONGEST_ROUTE_MIN = 5;
+export const LONGEST_ROUTE_VP = 2;
+
+// Recompute lengths and update the holder. The title only changes hands when a
+// challenger is STRICTLY longer than the current holder (first keeps ties).
+// Mutates player.longestRoute and returns the new holder id (or null).
+export function recomputeLongestRoute(g: BoardGraph, state: GameState): string | null {
+  const lengths: Record<string, number> = {};
+  for (const p of state.players) {
+    p.longestRoute = longestRouteLength(g, state.routes, p.id);
+    lengths[p.id] = p.longestRoute;
+  }
+  const current = state.longestRouteHolderId;
+  const eligible = state.players.filter((p) => lengths[p.id] >= LONGEST_ROUTE_MIN);
+  if (eligible.length === 0) return null;
+  if (current && lengths[current] >= LONGEST_ROUTE_MIN) {
+    const challenger = state.players.find(
+      (p) => p.id !== current && lengths[p.id] > lengths[current],
+    );
+    return challenger ? challenger.id : current;
+  }
+  let holder = eligible[0];
+  for (const p of eligible) if (lengths[p.id] > lengths[holder.id]) holder = p;
+  return holder.id;
+}
+
+export function longestRouteVP(state: GameState, playerId: string): number {
+  return state.longestRouteHolderId === playerId ? LONGEST_ROUTE_VP : 0;
 }

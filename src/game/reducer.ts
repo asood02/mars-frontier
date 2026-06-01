@@ -18,7 +18,7 @@ import {
   payCost,
 } from './rules';
 import { produce } from './production';
-import { playerVP } from './scoring';
+import { playerVP, recomputeLongestRoute } from './scoring';
 import { WIN_VP } from './types';
 
 export interface ApplyResult {
@@ -113,6 +113,7 @@ function applySetup(g: BoardGraph, state: GameState, move: Move, playerId: strin
   }
   const next = clone(state);
   next.routes.push({ edgeId: e, ownerId: playerId });
+  next.longestRouteHolderId = recomputeLongestRoute(g, next);
   return advanceSetup(next);
 }
 
@@ -330,6 +331,7 @@ function handleBuildRoute(
   const next = clone(state);
   next.players[idx].resources = payCost(me.resources, BUILDING_COST.ROUTE);
   next.routes.push({ edgeId: e, ownerId: playerId });
+  next.longestRouteHolderId = recomputeLongestRoute(g, next);
   return { state: next };
 }
 
