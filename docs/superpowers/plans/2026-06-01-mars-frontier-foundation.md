@@ -17,6 +17,18 @@
 
 ---
 
+## Execution Notes (deviations applied while building)
+
+This plan was executed on branch `plan1-foundation`. The following corrections were made during execution; the prose below is otherwise as-written:
+
+1. **tsconfig structure (Task 0):** the single referencing root `tsconfig.json` triggered TS6310 with `tsc -b`. Replaced with the proven Vite 6 solution-style layout: root `tsconfig.json` is `{ "files": [], "references": [...] }` and the compiler options live in a new `tsconfig.app.json` (for `src`) plus `tsconfig.node.json` (for config files). Both use `tsBuildInfoFile` + `noEmit`.
+2. **vite.config.ts (Task 0):** `defineConfig` is imported from `'vitest/config'` (not `'vite'`), so the `test` key typechecks.
+3. **vitest version (Task 0):** bumped from `^2.1.8` to `^3.0.0`. Vitest 2.1 peers to vite 5 and pulled a second nested `vite` copy, causing a two-copies type clash; vitest 3 dedupes to the single vite 6.
+4. **Board counts (Tasks 3–4):** the real graph is **82 vertices / 111 edges** (not the pre-estimate 85/116). The pre-estimate counted phantom vertices from a negative-zero key split: `(-0).toFixed(3)` → `"-0.000"` ≠ `"0.000"`. `cornerKey` now uses `Math.round(x*1000)` (where `String(-0) === "0"`), which dedupes corners on the x=0/y=0 axes correctly. Max vertex degree is 3, as a hex tiling requires.
+5. **File colocation:** `generateHexes`/`generateBoard` (Task 4) were written into `board.ts` alongside the graph in Task 3's commit; Task 4's commit added only their tests.
+
+---
+
 ## File Structure
 
 Files created in this plan and their single responsibility:
