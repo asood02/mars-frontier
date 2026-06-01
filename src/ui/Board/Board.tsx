@@ -6,6 +6,7 @@ import { setupExpectation } from '../../game/reducer';
 import Hex from './Hex';
 import Edge from './Edge';
 import Vertex from './Vertex';
+import TerrainDefs from './TerrainDefs';
 import type { Move } from '../../game/types';
 
 export default function Board() {
@@ -98,6 +99,7 @@ export default function Board() {
       role="img"
       aria-label="Mars Frontier board"
     >
+      <TerrainDefs />
       {g.hexIds.map((hid) => {
         const hex = game.board.hexes.find((h) => h.id === hid)!;
         const [cx, cy] = g.hexPos[hid];
