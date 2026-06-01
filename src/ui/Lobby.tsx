@@ -4,6 +4,8 @@ export default function Lobby() {
   const connection = useGame((s) => s.connection);
   const roomCode = useGame((s) => s.roomCode);
   const seat = useGame((s) => s.seat);
+  const capacity = useGame((s) => s.capacity);
+  const filled = useGame((s) => s.filled);
   const error = useGame((s) => s.error);
   const goLanding = useGame((s) => s.goLanding);
 
@@ -23,7 +25,9 @@ export default function Lobby() {
         <>
           {seat === 0 ? (
             <>
-              <p className="text-white/60">Share this code with your opponent:</p>
+              <p className="text-white/60">
+                Share this code with your {capacity > 2 ? 'opponents' : 'opponent'}:
+              </p>
               <button
                 onClick={copy}
                 title="Copy"
@@ -31,7 +35,9 @@ export default function Lobby() {
               >
                 {roomCode}
               </button>
-              <p className="text-white/40 text-sm animate-pulse">Waiting for player 2 to join…</p>
+              <p className="text-white/40 text-sm animate-pulse">
+                Waiting for players… ({filled}/{capacity} joined)
+              </p>
             </>
           ) : (
             <p className="font-display text-2xl text-white/70 animate-pulse">

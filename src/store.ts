@@ -65,15 +65,17 @@ interface GameStore {
   interaction: Interaction;
   error: string | null;
   mode: Mode;
-  seat: 0 | 1 | null;
-  myPlayerId: 'p1' | 'p2' | null;
+  seat: number | null;
+  myPlayerId: string | null;
   roomCode: string | null;
+  capacity: number; // table size for the online room
+  filled: number; // players currently seated
   connection: Connection;
   tutorialOpen: boolean;
   guideOpen: boolean;
 
   newLocalGame: (seed?: number, playerCount?: number) => void;
-  hostOnline: () => void;
+  hostOnline: (playerCount?: number) => void;
   joinOnline: (code: string) => void;
   goLanding: () => void;
   setInteraction: (i: Interaction) => void;
@@ -100,18 +102,38 @@ export const useGame = create<GameStore>((set, get) => {
     });
     t.onLobby((e) => {
       if (e.t === 'created') {
-        set({ seat: 0, myPlayerId: 'p1', roomCode: e.code, connection: 'waiting' });
+        set({
+          seat: 0,
+          myPlayerId: 'p1',
+          roomCode: e.code,
+          capacity: e.capacity,
+          filled: e.filled,
+          connection: 'waiting',
+        });
       } else if (e.t === 'joined') {
-        set({ seat: 1, myPlayerId: 'p2', roomCode: e.code, connection: 'waiting' });
+        set({
+          seat: e.seat,
+          myPlayerId: `p${e.seat + 1}`,
+          roomCode: e.code,
+          capacity: e.capacity,
+          filled: e.filled,
+          connection: 'waiting',
+        });
       } else if (e.t === 'opponent' && e.joined) {
-        // Host: opponent arrived → author the initial state and broadcast it.
-        if (get().seat === 0) {
+        const capacity = e.capacity ?? get().capacity;
+        const filled = e.filled ?? get().filled + 1;
+        set({ capacity, filled });
+        // Host authors the initial state once every seat is filled, then broadcasts.
+        if (get().seat === 0 && filled >= capacity) {
+          const players = Array.from({ length: capacity }, (_, i) => ({
+            id: `p${i + 1}`,
+            name: `Player ${i + 1}`,
+          }));
           const game = createGame({
             id: newId(),
             code: get().roomCode ?? randomCode(),
             seed: Math.floor(Math.random() * 1e9),
-            p1: { id: 'p1', name: 'Player 1' },
-            p2: { id: 'p2', name: 'Player 2' },
+            players,
           });
           set({
             game,
@@ -123,7 +145,7 @@ export const useGame = create<GameStore>((set, get) => {
           t.sendState(game);
         }
       } else if (e.t === 'opponent' && !e.joined) {
-        set({ connection: 'error', error: 'Opponent disconnected.' });
+        set({ connection: 'error', error: 'A player disconnected.' });
       } else if (e.t === 'error') {
         set({ connection: 'error', error: e.message });
       }
@@ -140,6 +162,8 @@ export const useGame = create<GameStore>((set, get) => {
     seat: null,
     myPlayerId: null,
     roomCode: null,
+    capacity: 2,
+    filled: 0,
     connection: 'idle',
     tutorialOpen: false,
     guideOpen: false,
@@ -166,8 +190,9 @@ export const useGame = create<GameStore>((set, get) => {
       });
     },
 
-    hostOnline: () => {
+    hostOnline: (playerCount = 2) => {
       teardownTransport();
+      const capacity = Math.min(MAX_PLAYERS, Math.max(MIN_PLAYERS, playerCount));
       transport = createTransport(defaultWsUrl());
       attach(transport);
       set({
@@ -179,8 +204,10 @@ export const useGame = create<GameStore>((set, get) => {
         seat: null,
         myPlayerId: null,
         roomCode: null,
+        capacity,
+        filled: 0,
       });
-      transport.create();
+      transport.create(capacity);
     },
 
     joinOnline: (code) => {

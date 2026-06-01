@@ -2,9 +2,9 @@ import type { GameState } from '../game/types';
 
 // Lobby/handshake messages from the relay server.
 export type LobbyEvent =
-  | { t: 'created'; code: string; seat: number }
-  | { t: 'joined'; code: string; seat: number }
-  | { t: 'opponent'; joined: boolean }
+  | { t: 'created'; code: string; seat: number; capacity: number; filled: number }
+  | { t: 'joined'; code: string; seat: number; capacity: number; filled: number }
+  | { t: 'opponent'; joined: boolean; capacity?: number; filled?: number }
   | { t: 'error'; message: string };
 
 // Minimal surface a browser WebSocket satisfies; lets us inject a fake in tests.
@@ -17,7 +17,7 @@ export interface SocketLike {
 export type SocketFactory = (url: string) => SocketLike;
 
 export interface Transport {
-  create(): void;
+  create(capacity?: number): void;
   join(code: string): void;
   sendState(state: GameState): void;
   onLobby(cb: (e: LobbyEvent) => void): void;
@@ -69,7 +69,7 @@ export function createTransport(url: string, factory: SocketFactory = defaultFac
   socket.addEventListener('close', () => closeCbs.forEach((cb) => cb()));
 
   return {
-    create: () => raw({ t: 'create' }),
+    create: (capacity = 2) => raw({ t: 'create', capacity }),
     join: (code) => raw({ t: 'join', code }),
     sendState: (state) => raw({ t: 'state', state }),
     onLobby: (cb) => void lobbyCbs.push(cb),

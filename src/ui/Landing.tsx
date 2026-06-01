@@ -52,7 +52,7 @@ export default function Landing() {
 
         <div className="flex gap-3 w-full">
           <button
-            onClick={hostOnline}
+            onClick={() => hostOnline(players)}
             className="flex-1 font-display px-6 py-3 rounded-full border border-cyan/50 text-cyan hover:bg-cyan/10 transition"
           >
             Host Online
