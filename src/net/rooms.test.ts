@@ -23,8 +23,8 @@ describe('relay rooms', () => {
     const rooms = makeRooms();
     const code = createRoom(rooms, 'A', () => 0)[0].msg.code;
     const out = joinRoom(rooms, 'B', code);
-    const joined = out.find((d) => d.to === 'B' && d.msg.t === 'joined');
-    const notify = out.find((d) => d.to === 'A' && d.msg.t === 'opponent');
+    const joined = out.find((d: any) => d.to === 'B' && d.msg.t === 'joined');
+    const notify = out.find((d: any) => d.to === 'A' && d.msg.t === 'opponent');
     expect(joined.msg.seat).toBe(1);
     expect(notify.msg.joined).toBe(true);
   });
@@ -53,7 +53,7 @@ describe('relay rooms', () => {
     // host publishes before anyone joins (allowed; stored)
     relayState(rooms, 'A', { turn: 1 });
     const out = joinRoom(rooms, 'B', code);
-    expect(out.some((d) => d.to === 'B' && d.msg.t === 'state')).toBe(true);
+    expect(out.some((d: any) => d.to === 'B' && d.msg.t === 'state')).toBe(true);
   });
 
   it('leave notifies the opponent and frees an empty room', () => {
