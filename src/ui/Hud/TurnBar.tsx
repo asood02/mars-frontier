@@ -3,6 +3,7 @@ import { playerVP } from '../../game/scoring';
 
 export default function TurnBar() {
   const game = useGame((s) => s.game)!;
+  const openTutorial = useGame((s) => s.openTutorial);
   return (
     <div className="flex items-center justify-between px-6 py-3 bg-white/5 backdrop-blur border-b border-white/10">
       {game.players.map((p, i) => {
@@ -22,11 +23,18 @@ export default function TurnBar() {
           </div>
         );
       })}
-      <div
-        className="font-sans text-xs uppercase tracking-[0.3em] text-cyan/70"
-        style={{ order: 1 }}
-      >
-        Turn {game.turn} · {game.phase}
+      <div className="flex items-center gap-3" style={{ order: 1 }}>
+        <span className="font-sans text-xs uppercase tracking-[0.3em] text-cyan/70">
+          Turn {game.turn} · {game.phase}
+        </span>
+        <button
+          onClick={openTutorial}
+          title="How to play"
+          aria-label="How to play"
+          className="w-6 h-6 rounded-full border border-white/20 text-white/60 text-xs hover:bg-white/10 transition"
+        >
+          ?
+        </button>
       </div>
     </div>
   );

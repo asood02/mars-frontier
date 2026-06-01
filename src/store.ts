@@ -4,6 +4,25 @@ import { createGame } from './game/state';
 import { applyMove } from './game/reducer';
 import { createTransport, defaultWsUrl } from './net/transport';
 import type { Transport } from './net/transport';
+import { sound } from './sound';
+
+function playForMove(move: Move, gameover: boolean) {
+  if (gameover) return sound.win();
+  switch (move.type) {
+    case 'BUILD':
+      return sound.build();
+    case 'BUILD_ROUTE':
+      return sound.route();
+    case 'RESEARCH':
+      return sound.research();
+    case 'CLAIM_MISSION':
+      return sound.claim();
+    case 'MOVE_DUST_STORM':
+      return sound.storm();
+    default:
+      return;
+  }
+}
 
 export type Screen = 'landing' | 'lobby' | 'game' | 'gameover';
 export type Interaction = 'idle' | 'habitat' | 'dome' | 'route' | 'commTower' | 'storm';
@@ -20,6 +39,14 @@ function randomCode(): string {
 function newId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
   return `g-${Math.random().toString(36).slice(2)}`;
+}
+
+function tutorialSeen(): boolean {
+  try {
+    return localStorage.getItem('mf-tutorial-seen') === '1';
+  } catch {
+    return false;
+  }
 }
 
 // The transport lives outside React state (it's not render data).
@@ -41,6 +68,7 @@ interface GameStore {
   myPlayerId: 'p1' | 'p2' | null;
   roomCode: string | null;
   connection: Connection;
+  tutorialOpen: boolean;
 
   newLocalGame: (seed?: number) => void;
   hostOnline: () => void;
@@ -49,18 +77,22 @@ interface GameStore {
   setInteraction: (i: Interaction) => void;
   dispatch: (move: Move) => void;
   roll: () => void;
+  openTutorial: () => void;
+  closeTutorial: () => void;
 }
 
 export const useGame = create<GameStore>((set, get) => {
   // Wire a freshly created transport's event handlers to the store.
   const attach = (t: Transport) => {
     t.onState((state) => {
+      const firstTime = !get().game;
       set({
         game: state,
         connection: 'connected',
         screen: state.phase === 'gameover' ? 'gameover' : 'game',
         error: null,
       });
+      if (firstTime && !tutorialSeen()) set({ tutorialOpen: true });
     });
     t.onLobby((e) => {
       if (e.t === 'created') {
@@ -77,7 +109,13 @@ export const useGame = create<GameStore>((set, get) => {
             p1: { id: 'p1', name: 'Player 1' },
             p2: { id: 'p2', name: 'Player 2' },
           });
-          set({ game, screen: 'game', connection: 'connected', error: null });
+          set({
+            game,
+            screen: 'game',
+            connection: 'connected',
+            error: null,
+            tutorialOpen: !tutorialSeen(),
+          });
           t.sendState(game);
         }
       } else if (e.t === 'opponent' && !e.joined) {
@@ -99,6 +137,7 @@ export const useGame = create<GameStore>((set, get) => {
     myPlayerId: null,
     roomCode: null,
     connection: 'idle',
+    tutorialOpen: false,
 
     newLocalGame: (seed = Math.floor(Math.random() * 1e9)) => {
       teardownTransport();
@@ -119,6 +158,7 @@ export const useGame = create<GameStore>((set, get) => {
         myPlayerId: null,
         roomCode: null,
         connection: 'idle',
+        tutorialOpen: !tutorialSeen(),
       });
     },
 
@@ -184,9 +224,11 @@ export const useGame = create<GameStore>((set, get) => {
             : game.activePlayerId;
       const { state, error } = applyMove(game, move, author);
       if (error) {
+        sound.error();
         set({ error });
         return;
       }
+      playForMove(move, state.phase === 'gameover');
       set({
         game: state,
         interaction: 'idle',
@@ -199,6 +241,16 @@ export const useGame = create<GameStore>((set, get) => {
     roll: () => {
       const d = (): number => 1 + Math.floor(Math.random() * 6);
       get().dispatch({ type: 'ROLL', roll: [d(), d()] });
+    },
+
+    openTutorial: () => set({ tutorialOpen: true }),
+    closeTutorial: () => {
+      try {
+        localStorage.setItem('mf-tutorial-seen', '1');
+      } catch {
+        /* ignore */
+      }
+      set({ tutorialOpen: false });
     },
   };
 });

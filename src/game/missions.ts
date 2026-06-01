@@ -35,6 +35,7 @@ export interface MissionCtx {
 export interface MissionDef {
   id: string;
   vp: number;
+  desc: string;
   bonus?: Partial<Record<Resource, number>>;
   condition: (ctx: MissionCtx) => boolean;
 }
@@ -100,14 +101,27 @@ export const MISSIONS: MissionDef[] = [
   {
     id: 'pioneer',
     vp: 2,
+    desc: 'Build 3 Habitats',
     condition: (c) =>
       myBuildings(c).filter((b) => b.kind === 'HABITAT' || b.kind === 'DOME').length >= 3,
   },
-  { id: 'ice-baron', vp: 2, condition: (c) => buildingsAdjacentToTerrain(c, 'ICE') >= 3 },
-  { id: 'engineer', vp: 1, bonus: { ENG: 2 }, condition: (c) => c.player.hasCommTower },
+  {
+    id: 'ice-baron',
+    vp: 2,
+    desc: '3 buildings beside Ice',
+    condition: (c) => buildingsAdjacentToTerrain(c, 'ICE') >= 3,
+  },
+  {
+    id: 'engineer',
+    vp: 1,
+    desc: 'Own a Comm Tower',
+    bonus: { ENG: 2 },
+    condition: (c) => c.player.hasCommTower,
+  },
   {
     id: 'cartographer',
     vp: 2,
+    desc: 'Routes touching all 4 terrains',
     condition: (c) => {
       const t = routeTerrains(c);
       return PRODUCING.every((x) => t.has(x));
@@ -116,46 +130,82 @@ export const MISSIONS: MissionDef[] = [
   {
     id: 'geologist',
     vp: 3,
+    desc: 'A building beside all 4 terrains',
     condition: (c) => PRODUCING.every((t) => buildingsAdjacentToTerrain(c, t) >= 1),
   },
   {
     id: 'long-haul',
     vp: 1,
+    desc: 'Build 4 routes in one turn',
     bonus: { ENG: 2 },
     condition: (c) => c.state.stats[c.playerId].routesThisTurn >= 4,
   },
-  { id: 'researcher', vp: 2, condition: (c) => c.player.techs.length >= 2 },
+  { id: 'researcher', vp: 2, desc: 'Own 2 Tech cards', condition: (c) => c.player.techs.length >= 2 },
   {
     id: 'industrialist',
     vp: 2,
+    desc: 'Own 2 Domes',
     condition: (c) => myBuildings(c).filter((b) => b.kind === 'DOME').length >= 2,
   },
-  { id: 'dustkeeper', vp: 1, condition: (c) => c.state.stats[c.playerId].dustPlacements >= 3 },
-  { id: 'stockpile', vp: 1, condition: (c) => totalRes(c.player) >= 10 },
+  {
+    id: 'dustkeeper',
+    vp: 1,
+    desc: 'Move the Dust Storm 3 times',
+    condition: (c) => c.state.stats[c.playerId].dustPlacements >= 3,
+  },
+  { id: 'stockpile', vp: 1, desc: 'Hold 10 resources', condition: (c) => totalRes(c.player) >= 10 },
   {
     id: 'alchemist',
     vp: 1,
+    desc: 'Trade with opponent 3 times',
     bonus: { RES: 1 },
     condition: (c) => c.state.stats[c.playerId].tradesWithOpponent >= 3,
   },
   {
     id: 'sprinter',
     vp: 2,
+    desc: 'Hold the Longest Route (5+)',
     condition: (c) => c.player.longestRoute >= 5 && c.state.longestRouteHolderId === c.playerId,
   },
   {
     id: 'diversified',
     vp: 3,
+    desc: 'Own all 3 building types',
     condition: (c) => {
       const k = ownsKinds(c);
       return k.has('HABITAT') && k.has('DOME') && k.has('COMM_TOWER');
     },
   },
-  { id: 'astronomer', vp: 1, condition: (c) => c.state.stats[c.playerId].sevensRolled >= 3 },
-  { id: 'solar-mogul', vp: 2, condition: (c) => buildingsAdjacentToTerrain(c, 'CRATER') >= 3 },
-  { id: 'networker', vp: 1, condition: (c) => touchesOpponent(c) },
-  { id: 'survivor', vp: 1, condition: (c) => c.state.stats[c.playerId].dustDamageTaken >= 3 },
-  { id: 'first-light', vp: 1, condition: (c) => c.player.techs.length >= 1 },
+  {
+    id: 'astronomer',
+    vp: 1,
+    desc: 'Roll three 7s',
+    condition: (c) => c.state.stats[c.playerId].sevensRolled >= 3,
+  },
+  {
+    id: 'solar-mogul',
+    vp: 2,
+    desc: '3 buildings beside Craters',
+    condition: (c) => buildingsAdjacentToTerrain(c, 'CRATER') >= 3,
+  },
+  {
+    id: 'networker',
+    vp: 1,
+    desc: 'A route touching your opponent',
+    condition: (c) => touchesOpponent(c),
+  },
+  {
+    id: 'survivor',
+    vp: 1,
+    desc: 'Take storm damage 3 times',
+    condition: (c) => c.state.stats[c.playerId].dustDamageTaken >= 3,
+  },
+  {
+    id: 'first-light',
+    vp: 1,
+    desc: 'Be first to research a Tech',
+    condition: (c) => c.player.techs.length >= 1,
+  },
 ];
 
 export function missionById(id: string): MissionDef | undefined {

@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { hexCoords, buildBoardGraph, hexId, generateHexes, generateBoard } from './board';
+import {
+  hexCoords,
+  buildBoardGraph,
+  hexId,
+  generateHexes,
+  generateBoard,
+  hexAdjacency,
+  numberPips,
+} from './board';
 
 describe('hexCoords', () => {
   it('produces exactly 30 hexes', () => {
@@ -114,6 +122,65 @@ describe('generateBoard', () => {
     expect(board.hexes).toHaveLength(30);
     expect(board.vertices).toHaveLength(82);
     expect(board.edges).toHaveLength(111);
+  });
+});
+
+describe('numberPips', () => {
+  it('maps sums to their 2d6 frequency (Catan pips)', () => {
+    expect(numberPips(2)).toBe(1);
+    expect(numberPips(12)).toBe(1);
+    expect(numberPips(6)).toBe(5);
+    expect(numberPips(8)).toBe(5);
+    expect(numberPips(5)).toBe(4);
+  });
+});
+
+describe('hexAdjacency', () => {
+  const adj = hexAdjacency();
+  it('is symmetric and within 6 neighbors', () => {
+    for (const [id, ns] of Object.entries(adj)) {
+      expect(ns.length).toBeLessThanOrEqual(6);
+      for (const n of ns) expect(adj[n]).toContain(id);
+    }
+  });
+});
+
+describe('balanced board generation', () => {
+  const adj = hexAdjacency();
+  function violations(seed: number) {
+    const hexes = generateHexes(seed);
+    const byId = new Map(hexes.map((h) => [h.id, h]));
+    let equalNum = 0;
+    let redAdj = 0;
+    const seen = new Set<string>();
+    for (const h of hexes) {
+      for (const n of adj[h.id]) {
+        const key = [h.id, n].sort().join('|');
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const o = byId.get(n)!;
+        if (h.number !== null && o.number !== null) {
+          if (h.number === o.number) equalNum++;
+          const red = (x: number | null) => x === 6 || x === 8;
+          if (red(h.number) && red(o.number)) redAdj++;
+        }
+      }
+    }
+    return { equalNum, redAdj };
+  }
+
+  it('never places two equal numbers adjacent, and minimizes 6/8 adjacency', () => {
+    for (const seed of [1, 2, 42, 99, 1000, 7777]) {
+      const v = violations(seed);
+      expect(v.equalNum).toBe(0);
+      expect(v.redAdj).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('keeps the spec terrain distribution', () => {
+    const counts: Record<string, number> = {};
+    for (const h of generateHexes(42)) counts[h.terrain] = (counts[h.terrain] ?? 0) + 1;
+    expect(counts).toEqual({ PLAIN: 8, RIDGE: 7, CRATER: 6, ICE: 6, LAB: 2, LAKE: 1 });
   });
 });
 

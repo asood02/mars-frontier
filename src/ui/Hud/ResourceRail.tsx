@@ -13,11 +13,18 @@ export default function ResourceRail() {
       </div>
       <div className="grid grid-cols-5 gap-2">
         {RESOURCES.map((r) => (
-          <div key={r} className="flex flex-col items-center rounded-xl bg-black/30 py-2">
-            <span style={{ color: RESOURCE_META[r].color }} className="text-lg">
+          <div
+            key={r}
+            title={RESOURCE_META[r].label}
+            className="flex flex-col items-center rounded-xl bg-black/30 py-2"
+          >
+            <span style={{ color: RESOURCE_META[r].color }} className="text-base leading-none">
               {RESOURCE_META[r].glyph}
             </span>
-            <span className="font-display text-xl font-bold">{me.resources[r]}</span>
+            <span className="font-display text-xl font-bold leading-tight">{me.resources[r]}</span>
+            <span className="text-[9px] uppercase tracking-wide text-white/35">
+              {RESOURCE_META[r].label}
+            </span>
           </div>
         ))}
       </div>
