@@ -1,5 +1,5 @@
 import type { GameState, PlayerState } from './types';
-import { emptyResources } from './types';
+import { emptyResources, emptyStats } from './types';
 import { generateBoard } from './board';
 import { MISSION_IDS } from './missions';
 import { mulberry32, shuffle } from './rng';
@@ -44,6 +44,11 @@ export function createGame(opts: CreateGameOptions): GameState {
     lastRoll: null,
     turnPhase: 'AWAIT_ROLL',
     pendingDiscards: {},
+    longestRouteHolderId: null,
+    stats: {
+      [opts.p1.id]: emptyStats(),
+      [opts.p2.id]: emptyStats(),
+    },
     missionsOnBoard: deck.slice(0, 3),
     missionDeck: deck.slice(3),
     log: [],

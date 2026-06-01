@@ -343,11 +343,145 @@ describe('END_TURN and win', () => {
     expect(r.state.winnerId).toBe('p2');
   });
 
-  it('RESEARCH and CLAIM_MISSION report a Plan 3 stub error', () => {
+});
+
+describe('RESEARCH', () => {
+  function playState(): GameState {
+    const s = newGame();
+    s.phase = 'play';
+    s.turn = 1;
+    s.activePlayerId = 'p1';
+    s.turnPhase = 'ACTIONS';
+    s.players[0].resources = { O2: 0, H2O: 0, ORE: 0, ENG: 0, RES: 10 };
+    return s;
+  }
+
+  it('buys ENG1 then ENG2 in order, charging RES', () => {
     const s = playState();
-    expect(applyMove(s, { type: 'RESEARCH', techId: 'eng-1' }, 'p1').error).toMatch(/Plan 3/);
-    expect(applyMove(s, { type: 'CLAIM_MISSION', missionId: 'pioneer' }, 'p1').error).toMatch(
-      /Plan 3/,
+    const r1 = applyMove(s, { type: 'RESEARCH', techId: 'ENG1' }, 'p1');
+    expect(r1.error).toBeUndefined();
+    expect(r1.state.players[0].techs).toEqual(['ENG1']);
+    expect(r1.state.players[0].resources.RES).toBe(8);
+    const r2 = applyMove(r1.state, { type: 'RESEARCH', techId: 'ENG2' }, 'p1');
+    expect(r2.state.players[0].techs).toEqual(['ENG1', 'ENG2']);
+    expect(r2.state.players[0].resources.RES).toBe(5);
+  });
+
+  it('rejects out-of-order research', () => {
+    const s = playState();
+    expect(applyMove(s, { type: 'RESEARCH', techId: 'ENG2' }, 'p1').error).toMatch(/in order/i);
+  });
+
+  it('rejects research the player cannot afford', () => {
+    const s = playState();
+    s.players[0].resources.RES = 1;
+    expect(applyMove(s, { type: 'RESEARCH', techId: 'ENG1' }, 'p1').error).toMatch(/RES/);
+  });
+});
+
+describe('tech effects in the reducer', () => {
+  function playState(): GameState {
+    const s = newGame();
+    s.phase = 'play';
+    s.turn = 1;
+    s.activePlayerId = 'p1';
+    s.turnPhase = 'ACTIONS';
+    const edge = g.edges[0];
+    const [v] = g.edgeVertices[edge];
+    s.buildings = [{ vertexId: v, ownerId: 'p1', kind: 'HABITAT' }];
+    s.routes = [{ edgeId: edge, ownerId: 'p1' }];
+    return s;
+  }
+
+  it('ENG2 makes a Dome cost 1 ORE + 3 ENG', () => {
+    const s = playState();
+    s.players[0].techs = ['ENG1', 'ENG2'];
+    s.players[0].resources = { O2: 0, H2O: 0, ORE: 1, ENG: 3, RES: 0 };
+    const v = s.buildings[0].vertexId;
+    const r = applyMove(s, { type: 'BUILD', building: 'DOME', locationId: v }, 'p1');
+    expect(r.error).toBeUndefined();
+    expect(r.state.players[0].resources).toEqual({ O2: 0, H2O: 0, ORE: 0, ENG: 0, RES: 0 });
+  });
+
+  it('ENG3 makes the first two routes free', () => {
+    const s = playState();
+    s.players[0].techs = ['ENG1', 'ENG2', 'ENG3'];
+    s.players[0].resources = { O2: 0, H2O: 0, ORE: 0, ENG: 0, RES: 0 };
+    const start = s.buildings[0].vertexId;
+    const e1 = g.vertexEdges[start].find((e) => e !== s.routes[0].edgeId)!;
+    const r = applyMove(s, { type: 'BUILD_ROUTE', edgeId: e1 }, 'p1');
+    expect(r.error).toBeUndefined();
+    expect(r.state.stats['p1'].routesThisTurn).toBe(1);
+  });
+
+  it('ASTRO3 gives a 2:1 market without a Comm Tower', () => {
+    const s = playState();
+    s.players[0].techs = ['ASTRO1', 'ASTRO2', 'ASTRO3'];
+    s.players[0].resources = { O2: 2, H2O: 0, ORE: 0, ENG: 0, RES: 0 };
+    const r = applyMove(s, { type: 'TRADE_MARKET', give: 'O2', receive: 'RES' }, 'p1');
+    expect(r.state.players[0].resources.O2).toBe(0);
+    expect(r.state.players[0].resources.RES).toBe(1);
+  });
+
+  it('BIO2 owner never owes a discard on a 7', () => {
+    const s = playState();
+    s.turnPhase = 'AWAIT_ROLL';
+    s.players[0].techs = ['BIO1', 'BIO2'];
+    s.players[0].resources = { O2: 8, H2O: 0, ORE: 0, ENG: 0, RES: 0 };
+    const r = applyMove(s, { type: 'ROLL', roll: [3, 4] }, 'p1');
+    expect(r.state.pendingDiscards['p1']).toBeUndefined();
+    expect(r.state.turnPhase).toBe('MOVE_STORM');
+    expect(r.state.stats['p1'].sevensRolled).toBe(1);
+  });
+});
+
+describe('CLAIM_MISSION', () => {
+  function playState(): GameState {
+    const s = newGame();
+    s.phase = 'play';
+    s.turn = 1;
+    s.activePlayerId = 'p1';
+    s.turnPhase = 'ACTIONS';
+    return s;
+  }
+
+  it('claims a board mission when its condition holds, draws a replacement', () => {
+    const s = playState();
+    s.missionsOnBoard = ['researcher', s.missionsOnBoard[1], s.missionsOnBoard[2]];
+    s.players[0].techs = ['ENG1', 'ENG2'];
+    const deckLen = s.missionDeck.length;
+    const r = applyMove(s, { type: 'CLAIM_MISSION', missionId: 'researcher' }, 'p1');
+    expect(r.error).toBeUndefined();
+    expect(r.state.players[0].missions).toContain('researcher');
+    expect(r.state.missionsOnBoard).not.toContain('researcher');
+    expect(r.state.missionsOnBoard).toHaveLength(3);
+    expect(r.state.missionDeck.length).toBe(deckLen - 1);
+  });
+
+  it('rejects claiming when the condition is not met', () => {
+    const s = playState();
+    s.missionsOnBoard = ['researcher', s.missionsOnBoard[1], s.missionsOnBoard[2]];
+    expect(applyMove(s, { type: 'CLAIM_MISSION', missionId: 'researcher' }, 'p1').error).toMatch(
+      /not met/i,
     );
+  });
+
+  it('rejects claiming a mission not on the board', () => {
+    const s = playState();
+    const offBoard = ['pioneer', 'ice-baron', 'engineer', 'cartographer'].find(
+      (m) => !s.missionsOnBoard.includes(m),
+    )!;
+    expect(applyMove(s, { type: 'CLAIM_MISSION', missionId: offBoard }, 'p1').error).toMatch(
+      /not on the board/i,
+    );
+  });
+
+  it('grants bonus resources (engineer gives 2 ENG)', () => {
+    const s = playState();
+    s.missionsOnBoard = ['engineer', s.missionsOnBoard[1], s.missionsOnBoard[2]];
+    s.players[0].hasCommTower = true;
+    const r = applyMove(s, { type: 'CLAIM_MISSION', missionId: 'engineer' }, 'p1');
+    expect(r.error).toBeUndefined();
+    expect(r.state.players[0].resources.ENG).toBe(2);
   });
 });
