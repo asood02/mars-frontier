@@ -434,3 +434,54 @@ describe('tech effects in the reducer', () => {
     expect(r.state.stats['p1'].sevensRolled).toBe(1);
   });
 });
+
+describe('CLAIM_MISSION', () => {
+  function playState(): GameState {
+    const s = newGame();
+    s.phase = 'play';
+    s.turn = 1;
+    s.activePlayerId = 'p1';
+    s.turnPhase = 'ACTIONS';
+    return s;
+  }
+
+  it('claims a board mission when its condition holds, draws a replacement', () => {
+    const s = playState();
+    s.missionsOnBoard = ['researcher', s.missionsOnBoard[1], s.missionsOnBoard[2]];
+    s.players[0].techs = ['ENG1', 'ENG2'];
+    const deckLen = s.missionDeck.length;
+    const r = applyMove(s, { type: 'CLAIM_MISSION', missionId: 'researcher' }, 'p1');
+    expect(r.error).toBeUndefined();
+    expect(r.state.players[0].missions).toContain('researcher');
+    expect(r.state.missionsOnBoard).not.toContain('researcher');
+    expect(r.state.missionsOnBoard).toHaveLength(3);
+    expect(r.state.missionDeck.length).toBe(deckLen - 1);
+  });
+
+  it('rejects claiming when the condition is not met', () => {
+    const s = playState();
+    s.missionsOnBoard = ['researcher', s.missionsOnBoard[1], s.missionsOnBoard[2]];
+    expect(applyMove(s, { type: 'CLAIM_MISSION', missionId: 'researcher' }, 'p1').error).toMatch(
+      /not met/i,
+    );
+  });
+
+  it('rejects claiming a mission not on the board', () => {
+    const s = playState();
+    const offBoard = ['pioneer', 'ice-baron', 'engineer', 'cartographer'].find(
+      (m) => !s.missionsOnBoard.includes(m),
+    )!;
+    expect(applyMove(s, { type: 'CLAIM_MISSION', missionId: offBoard }, 'p1').error).toMatch(
+      /not on the board/i,
+    );
+  });
+
+  it('grants bonus resources (engineer gives 2 ENG)', () => {
+    const s = playState();
+    s.missionsOnBoard = ['engineer', s.missionsOnBoard[1], s.missionsOnBoard[2]];
+    s.players[0].hasCommTower = true;
+    const r = applyMove(s, { type: 'CLAIM_MISSION', missionId: 'engineer' }, 'p1');
+    expect(r.error).toBeUndefined();
+    expect(r.state.players[0].resources.ENG).toBe(2);
+  });
+});

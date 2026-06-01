@@ -21,6 +21,7 @@ import { produce, produceOnSeven } from './production';
 import { playerVP, recomputeLongestRoute } from './scoring';
 import { WIN_VP } from './types';
 import { techById, nextResearchable } from './tech';
+import { missionById, missionCtx } from './missions';
 
 export interface ApplyResult {
   state: GameState;
@@ -166,7 +167,7 @@ function applyPlay(g: BoardGraph, state: GameState, move: Move, playerId: string
     case 'RESEARCH':
       return handleResearch(state, move, playerId);
     case 'CLAIM_MISSION':
-      return fail(state, 'Missions arrive in Plan 3.');
+      return handleClaimMission(state, move, playerId);
     default: {
       const _exhaustive: never = move;
       return fail(state, `Unhandled move: ${JSON.stringify(_exhaustive)}`);
@@ -396,6 +397,7 @@ function handleTradePlayer(
     next.players[oppIdx].resources[r] -= amt;
     next.players[meIdx].resources[r] += amt;
   }
+  next.stats[playerId].tradesWithOpponent += 1;
   return { state: next };
 }
 
@@ -418,6 +420,35 @@ function handleResearch(
   nextState.players[idx].resources.RES -= def.cost;
   nextState.players[idx].techs.push(def.id);
   return { state: nextState };
+}
+
+function handleClaimMission(
+  state: GameState,
+  move: Extract<Move, { type: 'CLAIM_MISSION' }>,
+  playerId: string,
+): ApplyResult {
+  if (playerId !== state.activePlayerId) return fail(state, 'Not your turn.');
+  if (state.turnPhase !== 'ACTIONS') return fail(state, 'Roll before claiming.');
+  if (!state.missionsOnBoard.includes(move.missionId)) {
+    return fail(state, 'That mission is not on the board.');
+  }
+  const def = missionById(move.missionId);
+  if (!def) return fail(state, 'Unknown mission.');
+  if (!def.condition(missionCtx(state, playerId))) {
+    return fail(state, 'Mission condition not met.');
+  }
+  const idx = playerIndex(state, playerId);
+  const next = clone(state);
+  next.players[idx].missions.push(def.id);
+  if (def.bonus) {
+    for (const [r, amt] of Object.entries(def.bonus) as [Resource, number][]) {
+      next.players[idx].resources[r] += amt;
+    }
+  }
+  next.missionsOnBoard = next.missionsOnBoard.filter((m) => m !== def.id);
+  const drawn = next.missionDeck.shift();
+  if (drawn) next.missionsOnBoard.push(drawn);
+  return { state: next };
 }
 
 function handleEndTurn(state: GameState, playerId: string): ApplyResult {
