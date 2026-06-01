@@ -52,8 +52,11 @@ const AXIAL_DIRS: ReadonlyArray<readonly [number, number]> = [
 ];
 
 // hexId -> adjacent hexIds present on the board (share an edge).
-export function hexAdjacency(): Record<string, string[]> {
-  const coords = hexCoords();
+export function hexAdjacency(
+  radius: number = BOARD_RADIUS,
+  removed: RemovedSet = REMOVED,
+): Record<string, string[]> {
+  const coords = hexCoords(radius, removed);
   const present = new Set(coords.map((c) => hexId(c.q, c.r)));
   const out: Record<string, string[]> = {};
   for (const { q, r } of coords) {
@@ -70,13 +73,18 @@ export function numberPips(n: number): number {
   return 6 - Math.abs(7 - n);
 }
 
-export function hexCoords(): Array<{ q: number; r: number }> {
+type RemovedSet = ReadonlyArray<readonly [number, number]>;
+
+export function hexCoords(
+  radius: number = BOARD_RADIUS,
+  removed: RemovedSet = REMOVED,
+): Array<{ q: number; r: number }> {
   const coords: Array<{ q: number; r: number }> = [];
-  for (let q = -BOARD_RADIUS; q <= BOARD_RADIUS; q++) {
-    for (let r = -BOARD_RADIUS; r <= BOARD_RADIUS; r++) {
+  for (let q = -radius; q <= radius; q++) {
+    for (let r = -radius; r <= radius; r++) {
       const s = -q - r;
-      if (Math.max(Math.abs(q), Math.abs(r), Math.abs(s)) > BOARD_RADIUS) continue;
-      if (REMOVED.some(([rq, rr]) => rq === q && rr === r)) continue;
+      if (Math.max(Math.abs(q), Math.abs(r), Math.abs(s)) > radius) continue;
+      if (removed.some(([rq, rr]) => rq === q && rr === r)) continue;
       coords.push({ q, r });
     }
   }
@@ -94,8 +102,11 @@ function cornerKey(x: number, y: number): string {
   return `${Math.round(x * 1000)}:${Math.round(y * 1000)}`;
 }
 
-export function buildBoardGraph(): BoardGraph {
-  const coords = hexCoords();
+export function buildBoardGraph(
+  radius: number = BOARD_RADIUS,
+  removed: RemovedSet = REMOVED,
+): BoardGraph {
+  const coords = hexCoords(radius, removed);
   const hexIds = coords.map((c) => hexId(c.q, c.r));
 
   const vKeyToId = new Map<string, string>();
@@ -189,7 +200,7 @@ export function buildBoardGraph(): BoardGraph {
     vertexEdges,
     edgeVertices,
     vertexNeighbors,
-    hexNeighbors: hexAdjacency(),
+    hexNeighbors: hexAdjacency(radius, removed),
     vertexPos,
     hexPos,
     edgePos,
@@ -220,6 +231,79 @@ const NUMBER_BAG: number[] = [
   11, 11, 11,
   12,
 ];
+
+// --- board sizing by player count -------------------------------------------
+// 2 players keep the hand-tuned 30-tile board exactly (so existing tests and the
+// board's "feel" are unchanged). 3/4 players get larger boards with bags scaled
+// procedurally to the tile count while preserving the terrain mix and bell-curve.
+
+export interface BoardConfig {
+  radius: number;
+  removed: RemovedSet;
+  terrainBag: Terrain[];
+  numberBag: number[];
+}
+
+// Even-ish producer split + a couple of Labs + one Lake, sized to `tiles`.
+function makeTerrainBag(tiles: number): Terrain[] {
+  const lake = 1;
+  const labs = Math.max(2, Math.round(tiles / 18));
+  const producers = tiles - lake - labs;
+  const kinds: Terrain[] = ['PLAIN', 'RIDGE', 'CRATER', 'ICE'];
+  const bag: Terrain[] = [];
+  for (let i = 0; i < producers; i++) bag.push(kinds[i % kinds.length]);
+  for (let i = 0; i < labs; i++) bag.push('LAB');
+  bag.push('LAKE');
+  return bag;
+}
+
+// `n` number tokens (one per non-Lake tile) shaped like 2d6 (no 7), exact length.
+function makeNumberBag(n: number): number[] {
+  const weights: [number, number][] = [
+    [2, 1], [3, 2], [4, 3], [5, 4], [6, 5], [8, 5], [9, 4], [10, 3], [11, 2], [12, 1],
+  ];
+  const total = 30;
+  const counts = weights.map(([num, w]) => [num, Math.max(1, Math.round((w / total) * n))] as [number, number]);
+  let sum = counts.reduce((a, [, c]) => a + c, 0);
+  // Adjust to exactly n by nudging the most central numbers first.
+  const order = [6, 8, 5, 9, 4, 10, 3, 11, 2, 12];
+  let i = 0;
+  while (sum !== n) {
+    const entry = counts.find(([num]) => num === order[i % order.length])!;
+    if (sum < n) {
+      entry[1] += 1;
+      sum += 1;
+    } else if (entry[1] > 1) {
+      entry[1] -= 1;
+      sum -= 1;
+    }
+    i += 1;
+  }
+  const bag: number[] = [];
+  for (const [num, c] of counts) for (let k = 0; k < c; k++) bag.push(num);
+  return bag;
+}
+
+export const DEFAULT_BOARD_CONFIG: BoardConfig = {
+  radius: BOARD_RADIUS,
+  removed: REMOVED,
+  terrainBag: TERRAIN_BAG,
+  numberBag: NUMBER_BAG,
+};
+
+// Tile target per player count: 2p=30 (tuned), 3p=37 (radius 3 full), 4p=61 (radius 4 full).
+export function boardConfigForPlayers(count: number): BoardConfig {
+  if (count <= 2) return DEFAULT_BOARD_CONFIG;
+  const radius = count >= 4 ? 4 : 3;
+  const removed: RemovedSet = [];
+  const tiles = hexCoords(radius, removed).length;
+  return {
+    radius,
+    removed,
+    terrainBag: makeTerrainBag(tiles),
+    numberBag: makeNumberBag(tiles - 1), // exactly one Lake → tiles-1 numbered
+  };
+}
 
 // Adjacent slot-index pairs over a list of coords, in slot space.
 function adjacentPairs(coords: Array<{ q: number; r: number }>): Array<[number, number]> {
@@ -264,13 +348,13 @@ const isRed = (n: number) => n === 6 || n === 8;
 // Generate a balanced board: terrains spread out (few same-terrain neighbors),
 // and number tokens with no two equal numbers adjacent and no two high-odds
 // (6/8) tiles adjacent — an even probability field. Deterministic per seed.
-export function generateHexes(seed: number): Hex[] {
-  const coords = hexCoords();
+export function generateHexes(seed: number, cfg: BoardConfig = DEFAULT_BOARD_CONFIG): Hex[] {
+  const coords = hexCoords(cfg.radius, cfg.removed);
   const pairs = adjacentPairs(coords);
 
   // 1) Terrain: minimize adjacent same-terrain pairs.
   const terrains = searchLayout(
-    TERRAIN_BAG,
+    cfg.terrainBag,
     pairs,
     (a, b) => (a === b ? 1 : 0),
     mulberry32(seed >>> 0),
@@ -289,7 +373,7 @@ export function generateHexes(seed: number): Hex[] {
     if (sa !== undefined && sb !== undefined) numPairs.push([sa, sb]);
   }
   const numLayout = searchLayout(
-    NUMBER_BAG,
+    cfg.numberBag,
     numPairs,
     (a, b) => (a === b ? 4 : 0) + (isRed(a) && isRed(b) ? 2 : 0),
     mulberry32((seed ^ 0x9e3779b9) >>> 0),
@@ -310,10 +394,10 @@ export function generateHexes(seed: number): Hex[] {
   }));
 }
 
-export function generateBoard(seed: number): BoardData {
-  const graph = buildBoardGraph();
+export function generateBoard(seed: number, cfg: BoardConfig = DEFAULT_BOARD_CONFIG): BoardData {
+  const graph = buildBoardGraph(cfg.radius, cfg.removed);
   return {
-    hexes: generateHexes(seed),
+    hexes: generateHexes(seed, cfg),
     vertices: graph.vertices,
     edges: graph.edges,
   };

@@ -23,7 +23,7 @@ export const MISSION_IDS: readonly string[] = [
 
 import type { GameState, PlayerState, Resource, Terrain } from './types';
 import type { BoardGraph } from './board';
-import { buildBoardGraph } from './board';
+import { buildBoardGraph, boardConfigForPlayers } from './board';
 
 export interface MissionCtx {
   state: GameState;
@@ -77,11 +77,12 @@ function ownsKinds(ctx: MissionCtx) {
 }
 
 function touchesOpponent(ctx: MissionCtx): boolean {
-  const oppId = ctx.state.players.find((p) => p.id !== ctx.playerId)!.id;
+  // Any other player counts as an opponent (2–4 players).
+  const isOpp = (ownerId: string) => ownerId !== ctx.playerId;
   const oppVerts = new Set<string>();
-  for (const b of ctx.state.buildings) if (b.ownerId === oppId) oppVerts.add(b.vertexId);
+  for (const b of ctx.state.buildings) if (isOpp(b.ownerId)) oppVerts.add(b.vertexId);
   for (const r of ctx.state.routes) {
-    if (r.ownerId !== oppId) continue;
+    if (!isOpp(r.ownerId)) continue;
     for (const v of ctx.g.edgeVertices[r.edgeId]) oppVerts.add(v);
   }
   for (const r of ctx.state.routes) {
@@ -214,7 +215,8 @@ export function missionById(id: string): MissionDef | undefined {
 
 // Build a MissionCtx for a player (used by the reducer when claiming).
 export function missionCtx(state: GameState, playerId: string): MissionCtx {
-  const g = buildBoardGraph();
-  const player = state.players[0].id === playerId ? state.players[0] : state.players[1];
+  const cfg = boardConfigForPlayers(state.players.length);
+  const g = buildBoardGraph(cfg.radius, cfg.removed);
+  const player = state.players.find((p) => p.id === playerId) ?? state.players[0];
   return { state, g, player, playerId };
 }

@@ -6,7 +6,12 @@ export interface Rooms {
   byClient: Map<unknown, unknown>;
 }
 export function makeRooms(): Rooms;
-export function createRoom(rooms: Rooms, client: unknown, rand?: () => number): Directive[];
+export function createRoom(
+  rooms: Rooms,
+  client: unknown,
+  rand?: () => number,
+  capacity?: number,
+): Directive[];
 export function joinRoom(rooms: Rooms, client: unknown, code: string): Directive[];
 export function relayState(rooms: Rooms, client: unknown, state: unknown): Directive[];
 export function leave(rooms: Rooms, client: unknown): Directive[];

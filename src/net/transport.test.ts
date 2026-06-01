@@ -29,11 +29,11 @@ describe('createTransport', () => {
   it('queues messages until the socket opens, then flushes', () => {
     const sock = new FakeSocket();
     const t = createTransport('ws://x', () => sock);
-    t.create(); // before open → queued
+    t.create(3); // before open → queued (3-player table)
     expect(sock.sent).toHaveLength(0);
     sock.open();
     expect(sock.sent).toHaveLength(1);
-    expect(JSON.parse(sock.sent[0])).toEqual({ t: 'create' });
+    expect(JSON.parse(sock.sent[0])).toEqual({ t: 'create', capacity: 3 });
   });
 
   it('routes state messages to onState and others to onLobby', () => {

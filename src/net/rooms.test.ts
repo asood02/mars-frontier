@@ -72,4 +72,29 @@ describe('relay rooms', () => {
     expect(handleMessage(rooms, 'A', { t: 'create' }, () => 0)[0].msg.t).toBe('created');
     expect(handleMessage(rooms, 'A', { t: 'bogus' })[0].msg.t).toBe('error');
   });
+
+  it('supports 3–4 seat rooms: seats fill in order and report roster', () => {
+    const rooms = makeRooms();
+    const created = createRoom(rooms, 'A', () => 0, 3)[0].msg;
+    expect(created.capacity).toBe(3);
+    const j1 = joinRoom(rooms, 'B', created.code as string);
+    expect(j1.find((d: any) => d.to === 'B').msg.seat).toBe(1);
+    // host A is notified with the new roster count
+    expect(j1.find((d: any) => d.to === 'A').msg.filled).toBe(2);
+    const j2 = joinRoom(rooms, 'C', created.code as string);
+    expect(j2.find((d: any) => d.to === 'C').msg.seat).toBe(2);
+    expect(j2.find((d: any) => d.to === 'C').msg.filled).toBe(3);
+    // a 4th joiner is rejected (room now full)
+    expect(joinRoom(rooms, 'D', created.code as string)[0].msg.message).toMatch(/full/i);
+  });
+
+  it('relays state to every other seat in a 3-player room', () => {
+    const rooms = makeRooms();
+    const code = createRoom(rooms, 'A', () => 0, 3)[0].msg.code as string;
+    joinRoom(rooms, 'B', code);
+    joinRoom(rooms, 'C', code);
+    const out = relayState(rooms, 'A', { turn: 9 });
+    expect(out.map((d: any) => d.to).sort()).toEqual(['B', 'C']);
+    expect(out.every((d: any) => d.msg.t === 'state')).toBe(true);
+  });
 });

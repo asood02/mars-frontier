@@ -18,44 +18,63 @@ function randomCode(rooms, rand = Math.random) {
   return code;
 }
 
-// Host creates a room → becomes seat 0.
-export function createRoom(rooms, client, rand) {
-  if (rooms.byClient.has(client)) return [{ to: client, msg: { t: 'error', message: 'Already in a room.' } }];
-  const code = randomCode(rooms, rand);
-  rooms.byCode.set(code, { code, seats: [client, null], state: null });
-  rooms.byClient.set(client, { code, seat: 0 });
-  return [{ to: client, msg: { t: 'created', code, seat: 0 } }];
+const MIN_CAP = 2;
+const MAX_CAP = 4;
+
+function filledCount(room) {
+  return room.seats.filter((s) => s != null).length;
 }
 
-// Joiner joins an existing room → becomes seat 1.
+// Every occupied seat in the room except `client`.
+function others(room, client) {
+  return room.seats.filter((s) => s != null && s !== client);
+}
+
+// Host creates a room → becomes seat 0. `capacity` (2–4) sets the table size.
+export function createRoom(rooms, client, rand, capacity = MIN_CAP) {
+  if (rooms.byClient.has(client)) return [{ to: client, msg: { t: 'error', message: 'Already in a room.' } }];
+  const cap = Math.min(MAX_CAP, Math.max(MIN_CAP, capacity | 0));
+  const code = randomCode(rooms, rand);
+  const seats = new Array(cap).fill(null);
+  seats[0] = client;
+  rooms.byCode.set(code, { code, capacity: cap, seats, state: null });
+  rooms.byClient.set(client, { code, seat: 0 });
+  return [{ to: client, msg: { t: 'created', code, seat: 0, capacity: cap, filled: 1 } }];
+}
+
+// Joiner takes the first open seat. Notifies everyone already in the room.
 export function joinRoom(rooms, client, code) {
   const room = rooms.byCode.get((code ?? '').toUpperCase());
   if (!room) return [{ to: client, msg: { t: 'error', message: 'Room not found.' } }];
-  if (room.seats[1]) return [{ to: client, msg: { t: 'error', message: 'Room is full.' } }];
   if (rooms.byClient.has(client)) return [{ to: client, msg: { t: 'error', message: 'Already in a room.' } }];
-  room.seats[1] = client;
-  rooms.byClient.set(client, { code: room.code, seat: 1 });
+  const seat = room.seats.findIndex((s) => s == null);
+  if (seat < 0) return [{ to: client, msg: { t: 'error', message: 'Room is full.' } }];
+  room.seats[seat] = client;
+  rooms.byClient.set(client, { code: room.code, seat });
+  const filled = filledCount(room);
   const out = [
-    { to: client, msg: { t: 'joined', code: room.code, seat: 1 } },
-    { to: room.seats[0], msg: { t: 'opponent', joined: true } },
+    { to: client, msg: { t: 'joined', code: room.code, seat, capacity: room.capacity, filled } },
   ];
+  // Tell everyone already seated that the roster changed.
+  for (const c of others(room, client)) {
+    out.push({ to: c, msg: { t: 'opponent', joined: true, capacity: room.capacity, filled } });
+  }
   // If the host already published a state, send it to the joiner.
   if (room.state) out.push({ to: client, msg: { t: 'state', state: room.state } });
   return out;
 }
 
-// Relay a full state snapshot to the other seat in the room.
+// Relay a full state snapshot to every other seat in the room.
 export function relayState(rooms, client, state) {
   const entry = rooms.byClient.get(client);
   if (!entry) return [];
   const room = rooms.byCode.get(entry.code);
   if (!room) return [];
   room.state = state;
-  const other = room.seats[entry.seat === 0 ? 1 : 0];
-  return other ? [{ to: other, msg: { t: 'state', state } }] : [];
+  return others(room, client).map((to) => ({ to, msg: { t: 'state', state } }));
 }
 
-// Handle a disconnect: notify the opponent, free the room if now empty.
+// Handle a disconnect: notify everyone left, free the room if now empty.
 export function leave(rooms, client) {
   const entry = rooms.byClient.get(client);
   if (!entry) return [];
@@ -63,16 +82,20 @@ export function leave(rooms, client) {
   const room = rooms.byCode.get(entry.code);
   if (!room) return [];
   room.seats[entry.seat] = null;
-  const other = room.seats[entry.seat === 0 ? 1 : 0];
-  if (!room.seats[0] && !room.seats[1]) rooms.byCode.delete(entry.code);
-  return other ? [{ to: other, msg: { t: 'opponent', joined: false } }] : [];
+  const remaining = others(room, client);
+  if (filledCount(room) === 0) rooms.byCode.delete(entry.code);
+  const filled = filledCount(room);
+  return remaining.map((to) => ({
+    to,
+    msg: { t: 'opponent', joined: false, capacity: room.capacity, filled },
+  }));
 }
 
 // Top-level message dispatch used by the server wiring.
 export function handleMessage(rooms, client, msg, rand) {
   switch (msg?.t) {
     case 'create':
-      return createRoom(rooms, client, rand);
+      return createRoom(rooms, client, rand, msg.capacity);
     case 'join':
       return joinRoom(rooms, client, msg.code);
     case 'state':
