@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { buildBoardGraph } from '../../game/board';
+import { buildBoardGraph, boardConfigForPlayers } from '../../game/board';
 import { useGame, canAct } from '../../store';
 import { legalMoves, violatesDistanceRule } from '../../game/rules';
 import { setupExpectation } from '../../game/reducer';
@@ -10,8 +10,12 @@ import TerrainDefs from './TerrainDefs';
 import type { Move } from '../../game/types';
 
 export default function Board() {
-  const g = useMemo(() => buildBoardGraph(), []);
   const game = useGame((s) => s.game)!;
+  const playerCount = game.players.length;
+  const g = useMemo(() => {
+    const cfg = boardConfigForPlayers(playerCount);
+    return buildBoardGraph(cfg.radius, cfg.removed);
+  }, [playerCount]);
   const interaction = useGame((s) => s.interaction);
   const dispatch = useGame((s) => s.dispatch);
   const act = useGame(canAct);

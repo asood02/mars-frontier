@@ -1,5 +1,5 @@
 import type { BoardGraph } from './board';
-import { buildBoardGraph } from './board';
+import { buildBoardGraph, boardConfigForPlayers } from './board';
 import type { GameState, Move, Resource } from './types';
 import {
   TERRAIN_RESOURCE,
@@ -37,34 +37,31 @@ function clone(state: GameState): GameState {
 }
 
 function playerIndex(state: GameState, id: string): number {
-  return state.players[0].id === id ? 0 : 1;
+  const i = state.players.findIndex((p) => p.id === id);
+  return i < 0 ? 0 : i;
 }
 
-function otherId(state: GameState, id: string): string {
-  return state.players[0].id === id ? state.players[1].id : state.players[0].id;
+function nextPlayerId(state: GameState, id: string): string {
+  const n = state.players.length;
+  return state.players[(playerIndex(state, id) + 1) % n].id;
 }
 
-// What the setup phase expects next, derived from placement counts.
+// What the setup phase expects next, derived purely from placement counts.
+// Snake draft over N players: round 1 forward (each places Habitat then Route),
+// round 2 in reverse (with starting resources). Generalizes the 2-player order.
 export function setupExpectation(
   state: GameState,
 ): { playerId: string; kind: 'HABITAT' | 'ROUTE' } | null {
-  const p1 = state.players[0].id;
-  const p2 = state.players[1].id;
+  const ps = state.players;
+  const n = ps.length;
+  const total = 2 * n; // total placements per kind across both rounds
   const b = state.buildings.length;
   const r = state.routes.length;
-  if (state.phase === 'setup1') {
-    if (b === 0 && r === 0) return { playerId: p1, kind: 'HABITAT' };
-    if (b === 1 && r === 0) return { playerId: p1, kind: 'ROUTE' };
-    if (b === 1 && r === 1) return { playerId: p2, kind: 'HABITAT' };
-    if (b === 2 && r === 1) return { playerId: p2, kind: 'ROUTE' };
-  }
-  if (state.phase === 'setup2') {
-    if (b === 2 && r === 2) return { playerId: p2, kind: 'HABITAT' };
-    if (b === 3 && r === 2) return { playerId: p2, kind: 'ROUTE' };
-    if (b === 3 && r === 3) return { playerId: p1, kind: 'HABITAT' };
-    if (b === 4 && r === 3) return { playerId: p1, kind: 'ROUTE' };
-  }
-  return null;
+  const habitatPending = b === r; // else a route is owed for the just-placed habitat
+  const k = habitatPending ? b : r; // 0-indexed (habitat, route) pair
+  if (k >= total) return null; // setup complete
+  const playerId = k < n ? ps[k].id : ps[total - 1 - k].id; // forward then reverse
+  return { playerId, kind: habitatPending ? 'HABITAT' : 'ROUTE' };
 }
 
 // Grant 1 resource per adjacent producing hex of the given vertex.
@@ -121,10 +118,11 @@ function applySetup(g: BoardGraph, state: GameState, move: Move, playerId: strin
 
 // After a setup placement, recompute phase / active player / transition to play.
 function advanceSetup(state: GameState): ApplyResult {
-  if (state.phase === 'setup1' && state.buildings.length === 2 && state.routes.length === 2) {
+  const n = state.players.length;
+  if (state.phase === 'setup1' && state.buildings.length === n && state.routes.length === n) {
     state.phase = 'setup2';
   }
-  if (state.phase === 'setup2' && state.buildings.length === 4 && state.routes.length === 4) {
+  if (state.phase === 'setup2' && state.buildings.length === 2 * n && state.routes.length === 2 * n) {
     state.phase = 'play';
     state.turn = 1;
     state.activePlayerId = state.players[0].id;
@@ -137,7 +135,8 @@ function advanceSetup(state: GameState): ApplyResult {
 }
 
 export function applyMove(state: GameState, move: Move, playerId: string): ApplyResult {
-  const g = buildBoardGraph();
+  const cfg = boardConfigForPlayers(state.players.length);
+  const g = buildBoardGraph(cfg.radius, cfg.removed);
   if (state.phase === 'setup1' || state.phase === 'setup2') {
     return applySetup(g, state, move, playerId);
   }
@@ -379,7 +378,9 @@ function handleTradePlayer(
   if (state.turnPhase !== 'ACTIONS') return fail(state, 'Roll before trading.');
   if (!move.accepted) return { state }; // declined offer: no-op
   const meIdx = playerIndex(state, playerId);
-  const oppIdx = meIdx === 0 ? 1 : 0;
+  const oppId = move.withId ?? nextPlayerId(state, playerId);
+  if (oppId === playerId) return fail(state, 'Cannot trade with yourself.');
+  const oppIdx = playerIndex(state, oppId);
   const me = state.players[meIdx];
   const opp = state.players[oppIdx];
   for (const [r, amt] of Object.entries(move.offer) as [Resource, number][]) {
@@ -455,7 +456,7 @@ function handleEndTurn(state: GameState, playerId: string): ApplyResult {
   if (playerId !== state.activePlayerId) return fail(state, 'Not your turn.');
   if (state.turnPhase !== 'ACTIONS') return fail(state, 'You must roll before ending your turn.');
   const next = clone(state);
-  next.activePlayerId = otherId(state, playerId);
+  next.activePlayerId = nextPlayerId(state, playerId);
   next.turn += 1;
   next.turnPhase = 'AWAIT_ROLL';
   next.lastRoll = null;

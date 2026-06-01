@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { GameState, Move } from './game/types';
+import { MIN_PLAYERS, MAX_PLAYERS } from './game/types';
 import { createGame } from './game/state';
 import { applyMove } from './game/reducer';
 import { createTransport, defaultWsUrl } from './net/transport';
@@ -71,7 +72,7 @@ interface GameStore {
   tutorialOpen: boolean;
   guideOpen: boolean;
 
-  newLocalGame: (seed?: number) => void;
+  newLocalGame: (seed?: number, playerCount?: number) => void;
   hostOnline: () => void;
   joinOnline: (code: string) => void;
   goLanding: () => void;
@@ -143,15 +144,14 @@ export const useGame = create<GameStore>((set, get) => {
     tutorialOpen: false,
     guideOpen: false,
 
-    newLocalGame: (seed = Math.floor(Math.random() * 1e9)) => {
+    newLocalGame: (seed = Math.floor(Math.random() * 1e9), playerCount = 2) => {
       teardownTransport();
-      const game = createGame({
-        id: newId(),
-        code: randomCode(),
-        seed,
-        p1: { id: 'p1', name: 'Player 1' },
-        p2: { id: 'p2', name: 'Player 2' },
-      });
+      const count = Math.min(MAX_PLAYERS, Math.max(MIN_PLAYERS, playerCount));
+      const players = Array.from({ length: count }, (_, i) => ({
+        id: `p${i + 1}`,
+        name: `Player ${i + 1}`,
+      }));
+      const game = createGame({ id: newId(), code: randomCode(), seed, players });
       set({
         game,
         screen: 'game',

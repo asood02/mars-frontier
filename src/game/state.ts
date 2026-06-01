@@ -1,6 +1,6 @@
-import type { GameState, PlayerState } from './types';
-import { emptyResources, emptyStats } from './types';
-import { generateBoard } from './board';
+import type { GameState, PlayerState, PlayerStats } from './types';
+import { emptyResources, emptyStats, MIN_PLAYERS, MAX_PLAYERS } from './types';
+import { generateBoard, boardConfigForPlayers } from './board';
 import { MISSION_IDS } from './missions';
 import { mulberry32, shuffle } from './rng';
 
@@ -20,24 +20,34 @@ export interface CreateGameOptions {
   id: string;
   code: string;
   seed: number;
-  p1: { id: string; name: string };
-  p2: { id: string; name: string };
+  // Canonical: 2–4 players in seating order. `p1`/`p2` kept for back-compat.
+  players?: Array<{ id: string; name: string }>;
+  p1?: { id: string; name: string };
+  p2?: { id: string; name: string };
 }
 
 export function createGame(opts: CreateGameOptions): GameState {
+  const seats = opts.players ?? [opts.p1, opts.p2].filter((p): p is { id: string; name: string } => !!p);
+  if (seats.length < MIN_PLAYERS || seats.length > MAX_PLAYERS) {
+    throw new Error(`Mars Frontier supports ${MIN_PLAYERS}–${MAX_PLAYERS} players (got ${seats.length}).`);
+  }
+
   // Derive the deck shuffle from the seed but offset it so the deck order is
   // independent of the board layout's RNG stream.
   const deckRand = mulberry32((opts.seed ^ 0x9e3779b9) >>> 0);
   const deck = shuffle(MISSION_IDS, deckRand);
+
+  const stats: Record<string, PlayerStats> = {};
+  for (const s of seats) stats[s.id] = emptyStats();
 
   return {
     id: opts.id,
     code: opts.code,
     phase: 'setup1',
     turn: 0,
-    activePlayerId: opts.p1.id,
-    players: [makePlayer(opts.p1.id, opts.p1.name), makePlayer(opts.p2.id, opts.p2.name)],
-    board: generateBoard(opts.seed),
+    activePlayerId: seats[0].id,
+    players: seats.map((s) => makePlayer(s.id, s.name)),
+    board: generateBoard(opts.seed, boardConfigForPlayers(seats.length)),
     buildings: [],
     routes: [],
     dustStormHexId: null,
@@ -45,10 +55,7 @@ export function createGame(opts: CreateGameOptions): GameState {
     turnPhase: 'AWAIT_ROLL',
     pendingDiscards: {},
     longestRouteHolderId: null,
-    stats: {
-      [opts.p1.id]: emptyStats(),
-      [opts.p2.id]: emptyStats(),
-    },
+    stats,
     missionsOnBoard: deck.slice(0, 3),
     missionDeck: deck.slice(3),
     log: [],

@@ -7,12 +7,13 @@ export default function Landing() {
   const joinOnline = useGame((s) => s.joinOnline);
   const [showJoin, setShowJoin] = useState(false);
   const [code, setCode] = useState('');
+  const [players, setPlayers] = useState(2);
 
   return (
     <main className="relative min-h-screen flex flex-col items-center justify-center gap-10 px-6">
       <div className="text-center">
         <p className="font-sans tracking-[0.4em] text-cyan/70 text-sm mb-4">
-          2-PLAYER COLONY BUILDER
+          2–4 PLAYER COLONY BUILDER
         </p>
         <h1 className="font-display text-7xl sm:text-8xl font-bold text-mars drop-shadow-[0_0_30px_rgba(255,107,53,0.35)]">
           MARS FRONTIER
@@ -24,8 +25,25 @@ export default function Landing() {
       </div>
 
       <div className="flex flex-col items-center gap-4 w-full max-w-sm">
+        <div className="flex items-center gap-2">
+          <span className="text-white/40 text-xs uppercase tracking-widest mr-1">Players</span>
+          {[2, 3, 4].map((n) => (
+            <button
+              key={n}
+              onClick={() => setPlayers(n)}
+              aria-pressed={players === n}
+              className={`w-10 h-10 rounded-full font-display font-bold transition ${
+                players === n
+                  ? 'bg-mars text-space'
+                  : 'border border-white/20 text-white/70 hover:bg-white/10'
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
         <button
-          onClick={() => newLocalGame()}
+          onClick={() => newLocalGame(undefined, players)}
           className="w-full font-display text-lg px-10 py-4 rounded-full bg-mars text-space font-bold tracking-wide
                      hover:scale-105 hover:shadow-[0_0_40px_rgba(255,107,53,0.5)] transition-all"
         >

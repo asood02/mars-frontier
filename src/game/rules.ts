@@ -1,5 +1,5 @@
 import type { BoardGraph } from './board';
-import { buildBoardGraph } from './board';
+import { buildBoardGraph, boardConfigForPlayers } from './board';
 import type { Building, Route, Resource, GameState, Move } from './types';
 import { RESOURCES, BUILDING_COST } from './types';
 
@@ -66,7 +66,8 @@ export function payCost(
 export function legalMoves(state: GameState, playerId: string): Move[] {
   if (state.phase !== 'play') return [];
   if (playerId !== state.activePlayerId && state.turnPhase !== 'DISCARD') return [];
-  const g = buildBoardGraph();
+  const cfg = boardConfigForPlayers(state.players.length);
+  const g = buildBoardGraph(cfg.radius, cfg.removed);
   const moves: Move[] = [];
   const me = state.players.find((p) => p.id === playerId)!;
 

@@ -61,7 +61,7 @@ export interface GameState {
   phase: Phase;
   turn: number;
   activePlayerId: string;
-  players: [PlayerState, PlayerState];
+  players: PlayerState[]; // 2–4 players, in seating/turn order
   board: BoardData;
   buildings: Building[];
   routes: Route[];
@@ -87,6 +87,7 @@ export type Move =
       offer: Partial<Record<Resource, number>>;
       want: Partial<Record<Resource, number>>;
       accepted: boolean;
+      withId?: string; // trade partner; defaults to the next player (2-player back-compat)
     }
   | { type: 'TRADE_MARKET'; give: Resource; receive: Resource }
   | { type: 'BUILD'; building: BuildingKind; locationId: string }
@@ -135,4 +136,6 @@ export const BUILDING_COST: Record<BuildingKind | 'ROUTE', Partial<Record<Resour
 export const MARKET_RATE_DEFAULT = 3; // 3:1 supply drop
 export const MARKET_RATE_COMM = 2; // 2:1 with a Comm Tower
 export const WIN_VP = 10;
+export const MIN_PLAYERS = 2;
+export const MAX_PLAYERS = 4;
 export const DUST_DISCARD_THRESHOLD = 7; // hands larger than this discard on a 7

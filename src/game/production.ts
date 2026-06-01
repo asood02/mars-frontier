@@ -23,10 +23,8 @@ export function produce(
   state: GameState,
   rollSum: number,
 ): Record<string, Record<Resource, number>> {
-  const delta: Record<string, Record<Resource, number>> = {
-    [state.players[0].id]: emptyResources(),
-    [state.players[1].id]: emptyResources(),
-  };
+  const delta: Record<string, Record<Resource, number>> = {};
+  for (const p of state.players) delta[p.id] = emptyResources();
 
   for (const hex of state.board.hexes) {
     if (hex.number !== rollSum) continue;
