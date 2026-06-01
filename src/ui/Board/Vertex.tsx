@@ -18,7 +18,17 @@ export default function Vertex(props: {
       onClick={legal ? onClick : undefined}
     >
       {legal && (
-        <circle cx={pos[0]} cy={pos[1]} r={0.2} fill="#facc15" opacity={0.5} className="animate-pulse" />
+        <circle
+          cx={pos[0]}
+          cy={pos[1]}
+          r={0.13}
+          fill="#facc15"
+          fillOpacity={0.12}
+          stroke="#facc15"
+          strokeWidth={0.035}
+          strokeOpacity={0.85}
+          className="animate-pulse"
+        />
       )}
       {kind === 'HABITAT' && (
         <circle cx={pos[0]} cy={pos[1]} r={0.14} fill={color} stroke="#0a0e1a" strokeWidth={0.04} />
