@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useGame, canAct } from '../../store';
 import type { Interaction } from '../../store';
 import Dice from './Dice';
+import { isMuted, setMuted } from '../../sound';
 
 const BUILD_BUTTONS: { mode: Interaction; label: string }[] = [
   { mode: 'habitat', label: 'Habitat' },
@@ -19,6 +21,7 @@ export default function ActionBar() {
 
   const inActions = game.phase === 'play' && game.turnPhase === 'ACTIONS' && act;
   const inStorm = game.phase === 'play' && game.turnPhase === 'MOVE_STORM' && act;
+  const [muted, setMutedState] = useState(isMuted());
 
   return (
     <div className="bg-white/5 backdrop-blur border-t border-white/10 px-6 py-3 flex flex-wrap items-center gap-3">
@@ -45,6 +48,18 @@ export default function ActionBar() {
         </button>
       )}
       <div className="flex-1" />
+      <button
+        onClick={() => {
+          const v = !muted;
+          setMuted(v);
+          setMutedState(v);
+        }}
+        title={muted ? 'Unmute' : 'Mute'}
+        aria-label={muted ? 'Unmute' : 'Mute'}
+        className="font-display text-lg w-9 h-9 rounded-full border border-white/15 text-white/70 hover:bg-white/10 transition"
+      >
+        {muted ? '🔇' : '🔊'}
+      </button>
       {error && <span className="text-sm text-red-400 font-sans">{error}</span>}
       <button
         disabled={!inActions}

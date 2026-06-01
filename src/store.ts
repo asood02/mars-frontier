@@ -4,6 +4,25 @@ import { createGame } from './game/state';
 import { applyMove } from './game/reducer';
 import { createTransport, defaultWsUrl } from './net/transport';
 import type { Transport } from './net/transport';
+import { sound } from './sound';
+
+function playForMove(move: Move, gameover: boolean) {
+  if (gameover) return sound.win();
+  switch (move.type) {
+    case 'BUILD':
+      return sound.build();
+    case 'BUILD_ROUTE':
+      return sound.route();
+    case 'RESEARCH':
+      return sound.research();
+    case 'CLAIM_MISSION':
+      return sound.claim();
+    case 'MOVE_DUST_STORM':
+      return sound.storm();
+    default:
+      return;
+  }
+}
 
 export type Screen = 'landing' | 'lobby' | 'game' | 'gameover';
 export type Interaction = 'idle' | 'habitat' | 'dome' | 'route' | 'commTower' | 'storm';
@@ -184,9 +203,11 @@ export const useGame = create<GameStore>((set, get) => {
             : game.activePlayerId;
       const { state, error } = applyMove(game, move, author);
       if (error) {
+        sound.error();
         set({ error });
         return;
       }
+      playForMove(move, state.phase === 'gameover');
       set({
         game: state,
         interaction: 'idle',
