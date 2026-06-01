@@ -21,10 +21,10 @@ describe('relay rooms', () => {
 
   it('joinRoom seats the joiner at 1 and notifies the host', () => {
     const rooms = makeRooms();
-    const code = createRoom(rooms, 'A', () => 0)[0].msg.code;
+    const code = createRoom(rooms, 'A', () => 0)[0].msg.code as string;
     const out = joinRoom(rooms, 'B', code);
-    const joined = out.find((d: any) => d.to === 'B' && d.msg.t === 'joined');
-    const notify = out.find((d: any) => d.to === 'A' && d.msg.t === 'opponent');
+    const joined = out.find((d: any) => d.to === 'B' && d.msg.t === 'joined')!;
+    const notify = out.find((d: any) => d.to === 'A' && d.msg.t === 'opponent')!;
     expect(joined.msg.seat).toBe(1);
     expect(notify.msg.joined).toBe(true);
   });
@@ -32,14 +32,14 @@ describe('relay rooms', () => {
   it('rejects joining an unknown or full room', () => {
     const rooms = makeRooms();
     expect(joinRoom(rooms, 'B', 'ZZZZZZ')[0].msg.t).toBe('error');
-    const code = createRoom(rooms, 'A', () => 0)[0].msg.code;
+    const code = createRoom(rooms, 'A', () => 0)[0].msg.code as string;
     joinRoom(rooms, 'B', code);
     expect(joinRoom(rooms, 'C', code)[0].msg.message).toMatch(/full/i);
   });
 
   it('relays state to the other seat only', () => {
     const rooms = makeRooms();
-    const code = createRoom(rooms, 'A', () => 0)[0].msg.code;
+    const code = createRoom(rooms, 'A', () => 0)[0].msg.code as string;
     joinRoom(rooms, 'B', code);
     const out = relayState(rooms, 'A', { turn: 5 });
     expect(out).toHaveLength(1);
@@ -49,7 +49,7 @@ describe('relay rooms', () => {
 
   it('sends the latest state to a late joiner', () => {
     const rooms = makeRooms();
-    const code = createRoom(rooms, 'A', () => 0)[0].msg.code;
+    const code = createRoom(rooms, 'A', () => 0)[0].msg.code as string;
     // host publishes before anyone joins (allowed; stored)
     relayState(rooms, 'A', { turn: 1 });
     const out = joinRoom(rooms, 'B', code);
@@ -58,7 +58,7 @@ describe('relay rooms', () => {
 
   it('leave notifies the opponent and frees an empty room', () => {
     const rooms = makeRooms();
-    const code = createRoom(rooms, 'A', () => 0)[0].msg.code;
+    const code = createRoom(rooms, 'A', () => 0)[0].msg.code as string;
     joinRoom(rooms, 'B', code);
     const out = leave(rooms, 'A');
     expect(out[0].to).toBe('B');
