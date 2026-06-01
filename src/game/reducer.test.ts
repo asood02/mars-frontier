@@ -301,3 +301,53 @@ describe('trades', () => {
     expect(r.state.players[0].resources.O2).toBe(2);
   });
 });
+
+describe('END_TURN and win', () => {
+  function playState(): GameState {
+    const s = newGame();
+    s.phase = 'play';
+    s.turn = 1;
+    s.activePlayerId = 'p1';
+    s.turnPhase = 'ACTIONS';
+    return s;
+  }
+
+  it('passes the turn, resets to AWAIT_ROLL, and clears the roll', () => {
+    const s = playState();
+    s.lastRoll = [3, 4];
+    const r = applyMove(s, { type: 'END_TURN' }, 'p1');
+    expect(r.error).toBeUndefined();
+    expect(r.state.activePlayerId).toBe('p2');
+    expect(r.state.turn).toBe(2);
+    expect(r.state.turnPhase).toBe('AWAIT_ROLL');
+    expect(r.state.lastRoll).toBeNull();
+  });
+
+  it('rejects ending the turn before rolling', () => {
+    const s = playState();
+    s.turnPhase = 'AWAIT_ROLL';
+    expect(applyMove(s, { type: 'END_TURN' }, 'p1').error).toMatch(/roll/i);
+  });
+
+  it('declares a winner when the next player starts with >= 10 VP', () => {
+    const s = playState();
+    s.buildings = [
+      { vertexId: 'a', ownerId: 'p2', kind: 'DOME' },
+      { vertexId: 'b', ownerId: 'p2', kind: 'DOME' },
+      { vertexId: 'c', ownerId: 'p2', kind: 'DOME' },
+      { vertexId: 'd', ownerId: 'p2', kind: 'DOME' },
+      { vertexId: 'e', ownerId: 'p2', kind: 'DOME' },
+    ];
+    const r = applyMove(s, { type: 'END_TURN' }, 'p1');
+    expect(r.state.phase).toBe('gameover');
+    expect(r.state.winnerId).toBe('p2');
+  });
+
+  it('RESEARCH and CLAIM_MISSION report a Plan 3 stub error', () => {
+    const s = playState();
+    expect(applyMove(s, { type: 'RESEARCH', techId: 'eng-1' }, 'p1').error).toMatch(/Plan 3/);
+    expect(applyMove(s, { type: 'CLAIM_MISSION', missionId: 'pioneer' }, 'p1').error).toMatch(
+      /Plan 3/,
+    );
+  });
+});

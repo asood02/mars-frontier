@@ -18,6 +18,8 @@ import {
   payCost,
 } from './rules';
 import { produce } from './production';
+import { playerVP } from './scoring';
+import { WIN_VP } from './types';
 
 export interface ApplyResult {
   state: GameState;
@@ -34,6 +36,10 @@ function clone(state: GameState): GameState {
 
 function playerIndex(state: GameState, id: string): number {
   return state.players[0].id === id ? 0 : 1;
+}
+
+function otherId(state: GameState, id: string): string {
+  return state.players[0].id === id ? state.players[1].id : state.players[0].id;
 }
 
 // What the setup phase expects next, derived from placement counts.
@@ -153,8 +159,16 @@ function applyPlay(g: BoardGraph, state: GameState, move: Move, playerId: string
       return handleTradeMarket(state, move, playerId);
     case 'TRADE_PLAYER':
       return handleTradePlayer(state, move, playerId);
-    default:
-      return fail(state, `Move ${move.type} not handled yet.`);
+    case 'END_TURN':
+      return handleEndTurn(state, playerId);
+    case 'RESEARCH':
+      return fail(state, 'Tech tree arrives in Plan 3.');
+    case 'CLAIM_MISSION':
+      return fail(state, 'Missions arrive in Plan 3.');
+    default: {
+      const _exhaustive: never = move;
+      return fail(state, `Unhandled move: ${JSON.stringify(_exhaustive)}`);
+    }
   }
 }
 
@@ -363,6 +377,22 @@ function handleTradePlayer(
   for (const [r, amt] of Object.entries(move.want) as [Resource, number][]) {
     next.players[oppIdx].resources[r] -= amt;
     next.players[meIdx].resources[r] += amt;
+  }
+  return { state: next };
+}
+
+function handleEndTurn(state: GameState, playerId: string): ApplyResult {
+  if (playerId !== state.activePlayerId) return fail(state, 'Not your turn.');
+  if (state.turnPhase !== 'ACTIONS') return fail(state, 'You must roll before ending your turn.');
+  const next = clone(state);
+  next.activePlayerId = otherId(state, playerId);
+  next.turn += 1;
+  next.turnPhase = 'AWAIT_ROLL';
+  next.lastRoll = null;
+  // Win is checked at the START of a turn (spec §3.10).
+  if (playerVP(next, next.activePlayerId) >= WIN_VP) {
+    next.phase = 'gameover';
+    next.winnerId = next.activePlayerId;
   }
   return { state: next };
 }
