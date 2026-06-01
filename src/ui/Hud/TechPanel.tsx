@@ -1,4 +1,4 @@
-import { useGame } from '../../store';
+import { useGame, viewerId, canAct } from '../../store';
 import { TECHS, nextResearchable } from '../../game/tech';
 import type { TechTrack } from '../../game/tech';
 
@@ -12,8 +12,10 @@ const TRACK_LABEL: Record<TechTrack, string> = {
 export default function TechPanel() {
   const game = useGame((s) => s.game)!;
   const dispatch = useGame((s) => s.dispatch);
-  const me = game.players.find((p) => p.id === game.activePlayerId)!;
-  const canResearch = game.phase === 'play' && game.turnPhase === 'ACTIONS';
+  const vid = useGame(viewerId);
+  const act = useGame(canAct);
+  const me = game.players.find((p) => p.id === vid)!;
+  const canResearch = game.phase === 'play' && game.turnPhase === 'ACTIONS' && act;
   return (
     <div className="rounded-2xl bg-white/5 backdrop-blur border border-white/10 p-4">
       <div className="text-xs uppercase tracking-widest text-white/40 mb-3">Tech</div>

@@ -1,10 +1,11 @@
-import { useGame } from '../../store';
+import { useGame, viewerId } from '../../store';
 import { RESOURCE_META } from '../format';
 import { RESOURCES } from '../../game/types';
 
 export default function ResourceRail() {
   const game = useGame((s) => s.game)!;
-  const me = game.players.find((p) => p.id === game.activePlayerId)!;
+  const vid = useGame(viewerId);
+  const me = game.players.find((p) => p.id === vid)!;
   return (
     <div className="rounded-2xl bg-white/5 backdrop-blur border border-white/10 p-4">
       <div className="text-xs uppercase tracking-widest text-white/40 mb-3">

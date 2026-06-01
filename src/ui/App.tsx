@@ -1,5 +1,6 @@
 import { useGame } from '../store';
 import Landing from './Landing';
+import Lobby from './Lobby';
 import Game from './Game';
 import GameOver from './GameOver';
 
@@ -10,6 +11,7 @@ export default function App() {
       <Starfield />
       <div className="relative z-10">
         {screen === 'landing' && <Landing />}
+        {screen === 'lobby' && <Lobby />}
         {screen === 'game' && <Game />}
         {screen === 'gameover' && <GameOver />}
       </div>
