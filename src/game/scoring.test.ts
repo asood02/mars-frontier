@@ -5,6 +5,8 @@ import {
   recomputeLongestRoute,
   longestRouteVP,
   techVP,
+  missionVP,
+  playerVP,
 } from './scoring';
 import { buildBoardGraph } from './board';
 import { createGame } from './state';
@@ -146,5 +148,21 @@ describe('techVP and fortified domes', () => {
     s.players[0].techs = ['ENG1', 'ENG2', 'ENG3', 'ENG4'];
     s.buildings = [{ vertexId: 'x', ownerId: 'p1', kind: 'DOME' }];
     expect(buildingVP(s, 'p1')).toBe(3);
+  });
+});
+
+describe('missionVP and total playerVP', () => {
+  it('sums claimed mission VP and folds into playerVP', () => {
+    const s = createGame({
+      id: 'g',
+      code: 'CODEM',
+      seed: 5,
+      p1: { id: 'p1', name: 'A' },
+      p2: { id: 'p2', name: 'B' },
+    });
+    s.players[0].missions = ['pioneer', 'geologist']; // 2 + 3
+    s.buildings = [{ vertexId: 'x', ownerId: 'p1', kind: 'HABITAT' }]; // +1
+    expect(missionVP(s, 'p1')).toBe(5);
+    expect(playerVP(s, 'p1')).toBe(6);
   });
 });

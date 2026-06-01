@@ -1,5 +1,6 @@
 import type { BoardGraph } from './board';
 import type { GameState, Route } from './types';
+import { missionById } from './missions';
 
 export function buildingVP(state: GameState, playerId: string): number {
   const me = state.players?.find((p) => p.id === playerId);
@@ -18,9 +19,20 @@ export function techVP(state: GameState, playerId: string): number {
   return Math.min(me?.techs.length ?? 0, 4); // max 4 counted (spec §3.7)
 }
 
-// Total VP = buildings + longest route + tech (missions folded in by a later task).
+export function missionVP(state: GameState, playerId: string): number {
+  const me = state.players?.find((p) => p.id === playerId);
+  if (!me) return 0;
+  return me.missions.reduce((sum, id) => sum + (missionById(id)?.vp ?? 0), 0);
+}
+
+// Total VP = buildings + longest route + tech + missions (spec §3.10).
 export function playerVP(state: GameState, playerId: string): number {
-  return buildingVP(state, playerId) + longestRouteVP(state, playerId) + techVP(state, playerId);
+  return (
+    buildingVP(state, playerId) +
+    longestRouteVP(state, playerId) +
+    techVP(state, playerId) +
+    missionVP(state, playerId)
+  );
 }
 
 // Longest contiguous chain (trail; no edge reused) of a player's routes.
