@@ -116,3 +116,16 @@ describe('generateBoard', () => {
     expect(board.edges).toHaveLength(111);
   });
 });
+
+describe('board pixel geometry', () => {
+  const g = buildBoardGraph();
+  it('positions every vertex, hex, and edge', () => {
+    expect(Object.keys(g.vertexPos)).toHaveLength(82);
+    expect(Object.keys(g.hexPos)).toHaveLength(30);
+    expect(Object.keys(g.edgePos)).toHaveLength(111);
+  });
+  it('has a positive-size viewBox covering the vertices', () => {
+    expect(g.viewBox.width).toBeGreaterThan(0);
+    expect(g.viewBox.height).toBeGreaterThan(0);
+  });
+});

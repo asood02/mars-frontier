@@ -30,6 +30,10 @@ export interface BoardGraph {
   vertexEdges: Record<string, string[]>; // vertexId -> incident edgeIds
   edgeVertices: Record<string, [string, string]>; // edgeId -> its 2 vertexIds
   vertexNeighbors: Record<string, string[]>; // vertexId -> vertices one edge away
+  vertexPos: Record<string, [number, number]>;
+  hexPos: Record<string, [number, number]>;
+  edgePos: Record<string, [number, number]>; // midpoint
+  viewBox: { minX: number; minY: number; width: number; height: number };
 }
 
 export function hexId(q: number, r: number): string {
@@ -68,10 +72,13 @@ export function buildBoardGraph(): BoardGraph {
   const vertices: string[] = [];
   const hexVertices: Record<string, string[]> = {};
   const vertexHexes: Record<string, string[]> = {};
+  const vertexPos: Record<string, [number, number]> = {};
+  const hexPos: Record<string, [number, number]> = {};
 
   for (const { q, r } of coords) {
     const id = hexId(q, r);
     const [cx, cy] = hexCenter(q, r);
+    hexPos[id] = [cx, cy];
     const vids: string[] = [];
     for (let i = 0; i < 6; i++) {
       const angle = (Math.PI / 180) * (60 * i - 30);
@@ -84,6 +91,7 @@ export function buildBoardGraph(): BoardGraph {
         vKeyToId.set(k, vid);
         vertices.push(vid);
         vertexHexes[vid] = [];
+        vertexPos[vid] = [x, y];
       }
       vids.push(vid);
       if (!vertexHexes[vid].includes(id)) vertexHexes[vid].push(id);
@@ -122,6 +130,26 @@ export function buildBoardGraph(): BoardGraph {
     });
   }
 
+  const edgePos: Record<string, [number, number]> = {};
+  for (const e of edges) {
+    const [a, b] = edgeVertices[e];
+    const [ax, ay] = vertexPos[a];
+    const [bx, by] = vertexPos[b];
+    edgePos[e] = [(ax + bx) / 2, (ay + by) / 2];
+  }
+
+  const xs = Object.values(vertexPos).map((p) => p[0]);
+  const ys = Object.values(vertexPos).map((p) => p[1]);
+  const pad = 1.2;
+  const minX = Math.min(...xs) - pad;
+  const minY = Math.min(...ys) - pad;
+  const viewBox = {
+    minX,
+    minY,
+    width: Math.max(...xs) - minX + pad,
+    height: Math.max(...ys) - minY + pad,
+  };
+
   return {
     hexIds,
     vertices,
@@ -131,6 +159,10 @@ export function buildBoardGraph(): BoardGraph {
     vertexEdges,
     edgeVertices,
     vertexNeighbors,
+    vertexPos,
+    hexPos,
+    edgePos,
+    viewBox,
   };
 }
 
