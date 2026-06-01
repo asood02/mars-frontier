@@ -3,9 +3,11 @@ import Landing from './Landing';
 import Lobby from './Lobby';
 import Game from './Game';
 import GameOver from './GameOver';
+import Tutorial from './Tutorial';
 
 export default function App() {
   const screen = useGame((s) => s.screen);
+  const tutorialOpen = useGame((s) => s.tutorialOpen);
   return (
     <div className="min-h-screen bg-space text-white relative overflow-hidden">
       <Starfield />
@@ -15,6 +17,7 @@ export default function App() {
         {screen === 'game' && <Game />}
         {screen === 'gameover' && <GameOver />}
       </div>
+      {tutorialOpen && <Tutorial />}
     </div>
   );
 }
