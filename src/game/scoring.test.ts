@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { buildingVP, longestRouteLength, recomputeLongestRoute, longestRouteVP } from './scoring';
+import {
+  buildingVP,
+  longestRouteLength,
+  recomputeLongestRoute,
+  longestRouteVP,
+  techVP,
+} from './scoring';
 import { buildBoardGraph } from './board';
 import { createGame } from './state';
 import type { GameState, Route } from './types';
@@ -113,5 +119,32 @@ describe('recomputeLongestRoute', () => {
     const s = freshState();
     s.routes = connectedPath(4, 'p1');
     expect(recomputeLongestRoute(g, s)).toBeNull();
+  });
+});
+
+describe('techVP and fortified domes', () => {
+  it('caps tech VP at 4', () => {
+    const s = createGame({
+      id: 'g',
+      code: 'CODET',
+      seed: 2,
+      p1: { id: 'p1', name: 'A' },
+      p2: { id: 'p2', name: 'B' },
+    });
+    s.players[0].techs = ['ENG1', 'ENG2', 'ENG3', 'ENG4', 'BIO1'];
+    expect(techVP(s, 'p1')).toBe(4);
+  });
+
+  it('scores fortified domes at 3 VP with ENG4', () => {
+    const s = createGame({
+      id: 'g',
+      code: 'CODEF',
+      seed: 2,
+      p1: { id: 'p1', name: 'A' },
+      p2: { id: 'p2', name: 'B' },
+    });
+    s.players[0].techs = ['ENG1', 'ENG2', 'ENG3', 'ENG4'];
+    s.buildings = [{ vertexId: 'x', ownerId: 'p1', kind: 'DOME' }];
+    expect(buildingVP(s, 'p1')).toBe(3);
   });
 });

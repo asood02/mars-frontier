@@ -343,11 +343,38 @@ describe('END_TURN and win', () => {
     expect(r.state.winnerId).toBe('p2');
   });
 
-  it('RESEARCH and CLAIM_MISSION report a Plan 3 stub error', () => {
+});
+
+describe('RESEARCH', () => {
+  function playState(): GameState {
+    const s = newGame();
+    s.phase = 'play';
+    s.turn = 1;
+    s.activePlayerId = 'p1';
+    s.turnPhase = 'ACTIONS';
+    s.players[0].resources = { O2: 0, H2O: 0, ORE: 0, ENG: 0, RES: 10 };
+    return s;
+  }
+
+  it('buys ENG1 then ENG2 in order, charging RES', () => {
     const s = playState();
-    expect(applyMove(s, { type: 'RESEARCH', techId: 'eng-1' }, 'p1').error).toMatch(/Plan 3/);
-    expect(applyMove(s, { type: 'CLAIM_MISSION', missionId: 'pioneer' }, 'p1').error).toMatch(
-      /Plan 3/,
-    );
+    const r1 = applyMove(s, { type: 'RESEARCH', techId: 'ENG1' }, 'p1');
+    expect(r1.error).toBeUndefined();
+    expect(r1.state.players[0].techs).toEqual(['ENG1']);
+    expect(r1.state.players[0].resources.RES).toBe(8);
+    const r2 = applyMove(r1.state, { type: 'RESEARCH', techId: 'ENG2' }, 'p1');
+    expect(r2.state.players[0].techs).toEqual(['ENG1', 'ENG2']);
+    expect(r2.state.players[0].resources.RES).toBe(5);
+  });
+
+  it('rejects out-of-order research', () => {
+    const s = playState();
+    expect(applyMove(s, { type: 'RESEARCH', techId: 'ENG2' }, 'p1').error).toMatch(/in order/i);
+  });
+
+  it('rejects research the player cannot afford', () => {
+    const s = playState();
+    s.players[0].resources.RES = 1;
+    expect(applyMove(s, { type: 'RESEARCH', techId: 'ENG1' }, 'p1').error).toMatch(/RES/);
   });
 });

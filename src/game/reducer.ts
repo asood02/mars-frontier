@@ -20,6 +20,7 @@ import {
 import { produce } from './production';
 import { playerVP, recomputeLongestRoute } from './scoring';
 import { WIN_VP } from './types';
+import { techById, nextResearchable } from './tech';
 
 export interface ApplyResult {
   state: GameState;
@@ -163,7 +164,7 @@ function applyPlay(g: BoardGraph, state: GameState, move: Move, playerId: string
     case 'END_TURN':
       return handleEndTurn(state, playerId);
     case 'RESEARCH':
-      return fail(state, 'Tech tree arrives in Plan 3.');
+      return handleResearch(state, move, playerId);
     case 'CLAIM_MISSION':
       return fail(state, 'Missions arrive in Plan 3.');
     default: {
@@ -381,6 +382,27 @@ function handleTradePlayer(
     next.players[meIdx].resources[r] += amt;
   }
   return { state: next };
+}
+
+function handleResearch(
+  state: GameState,
+  move: Extract<Move, { type: 'RESEARCH' }>,
+  playerId: string,
+): ApplyResult {
+  if (playerId !== state.activePlayerId) return fail(state, 'Not your turn.');
+  if (state.turnPhase !== 'ACTIONS') return fail(state, 'Roll before researching.');
+  const def = techById(move.techId);
+  if (!def) return fail(state, 'Unknown tech.');
+  const idx = playerIndex(state, playerId);
+  const me = state.players[idx];
+  if (me.techs.includes(def.id)) return fail(state, 'Already researched.');
+  const next = nextResearchable(me, def.track);
+  if (!next || next.id !== def.id) return fail(state, 'Must research techs in order.');
+  if (me.resources.RES < def.cost) return fail(state, `Need ${def.cost} RES.`);
+  const nextState = clone(state);
+  nextState.players[idx].resources.RES -= def.cost;
+  nextState.players[idx].techs.push(def.id);
+  return { state: nextState };
 }
 
 function handleEndTurn(state: GameState, playerId: string): ApplyResult {
