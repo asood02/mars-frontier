@@ -4,6 +4,7 @@ export type Resource = 'O2' | 'H2O' | 'ORE' | 'ENG' | 'RES';
 export type Terrain = 'PLAIN' | 'RIDGE' | 'CRATER' | 'ICE' | 'LAB' | 'LAKE';
 export type BuildingKind = 'HABITAT' | 'DOME' | 'COMM_TOWER';
 export type Phase = 'lobby' | 'setup1' | 'setup2' | 'play' | 'gameover';
+export type TurnPhase = 'AWAIT_ROLL' | 'DISCARD' | 'MOVE_STORM' | 'ACTIONS';
 
 export interface Hex {
   id: string;
@@ -58,6 +59,8 @@ export interface GameState {
   routes: Route[];
   dustStormHexId: string | null;
   lastRoll: [number, number] | null;
+  turnPhase: TurnPhase;
+  pendingDiscards: Record<string, number>; // playerId -> cards still owed (7-roll)
   missionDeck: string[]; // remaining face-down mission ids
   missionsOnBoard: string[]; // 3 visible mission ids
   log: GameEvent[];
@@ -100,3 +103,16 @@ export function emptyResources(): Record<Resource, number> {
 export function totalResources(r: Record<Resource, number>): number {
   return RESOURCES.reduce((sum, k) => sum + r[k], 0);
 }
+
+// Build costs (spec §3.5).
+export const BUILDING_COST: Record<BuildingKind | 'ROUTE', Partial<Record<Resource, number>>> = {
+  HABITAT: { O2: 1, H2O: 1, ORE: 1, ENG: 1 },
+  DOME: { ORE: 2, ENG: 3 },
+  COMM_TOWER: { ENG: 2, RES: 2 },
+  ROUTE: { ORE: 1, ENG: 1 },
+};
+
+export const MARKET_RATE_DEFAULT = 3; // 3:1 supply drop
+export const MARKET_RATE_COMM = 2; // 2:1 with a Comm Tower
+export const WIN_VP = 10;
+export const DUST_DISCARD_THRESHOLD = 7; // hands larger than this discard on a 7

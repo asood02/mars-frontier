@@ -57,4 +57,10 @@ describe('createGame', () => {
   it('preserves the room code', () => {
     expect(createGame(opts).code).toBe('ABC123');
   });
+
+  it('starts awaiting a roll with no pending discards', () => {
+    const g = createGame(opts);
+    expect(g.turnPhase).toBe('AWAIT_ROLL');
+    expect(g.pendingDiscards).toEqual({});
+  });
 });
