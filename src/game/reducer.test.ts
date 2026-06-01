@@ -246,3 +246,58 @@ describe('BUILD_ROUTE during play', () => {
     );
   });
 });
+
+describe('trades', () => {
+  function playState(): GameState {
+    const s = newGame();
+    s.phase = 'play';
+    s.turn = 1;
+    s.activePlayerId = 'p1';
+    s.turnPhase = 'ACTIONS';
+    return s;
+  }
+
+  it('market trade is 3:1 without a Comm Tower', () => {
+    const s = playState();
+    s.players[0].resources = { O2: 3, H2O: 0, ORE: 0, ENG: 0, RES: 0 };
+    const r = applyMove(s, { type: 'TRADE_MARKET', give: 'O2', receive: 'RES' }, 'p1');
+    expect(r.error).toBeUndefined();
+    expect(r.state.players[0].resources.O2).toBe(0);
+    expect(r.state.players[0].resources.RES).toBe(1);
+  });
+
+  it('market trade is 2:1 with a Comm Tower', () => {
+    const s = playState();
+    s.players[0].hasCommTower = true;
+    s.players[0].resources = { O2: 2, H2O: 0, ORE: 0, ENG: 0, RES: 0 };
+    const r = applyMove(s, { type: 'TRADE_MARKET', give: 'O2', receive: 'ENG' }, 'p1');
+    expect(r.state.players[0].resources.O2).toBe(0);
+    expect(r.state.players[0].resources.ENG).toBe(1);
+  });
+
+  it('accepted player trade swaps resources both ways', () => {
+    const s = playState();
+    s.players[0].resources = { O2: 2, H2O: 0, ORE: 0, ENG: 0, RES: 0 };
+    s.players[1].resources = { O2: 0, H2O: 0, ORE: 3, ENG: 0, RES: 0 };
+    const r = applyMove(
+      s,
+      { type: 'TRADE_PLAYER', offer: { O2: 2 }, want: { ORE: 3 }, accepted: true },
+      'p1',
+    );
+    expect(r.error).toBeUndefined();
+    expect(r.state.players[0].resources).toEqual({ O2: 0, H2O: 0, ORE: 3, ENG: 0, RES: 0 });
+    expect(r.state.players[1].resources).toEqual({ O2: 2, H2O: 0, ORE: 0, ENG: 0, RES: 0 });
+  });
+
+  it('declined player trade is a no-op', () => {
+    const s = playState();
+    s.players[0].resources = { O2: 2, H2O: 0, ORE: 0, ENG: 0, RES: 0 };
+    const r = applyMove(
+      s,
+      { type: 'TRADE_PLAYER', offer: { O2: 2 }, want: { ORE: 3 }, accepted: false },
+      'p1',
+    );
+    expect(r.error).toBeUndefined();
+    expect(r.state.players[0].resources.O2).toBe(2);
+  });
+});

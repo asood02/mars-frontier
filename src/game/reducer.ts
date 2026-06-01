@@ -1,7 +1,14 @@
 import type { BoardGraph } from './board';
 import { buildBoardGraph } from './board';
 import type { GameState, Move, Resource } from './types';
-import { TERRAIN_RESOURCE, DUST_DISCARD_THRESHOLD, totalResources, BUILDING_COST } from './types';
+import {
+  TERRAIN_RESOURCE,
+  DUST_DISCARD_THRESHOLD,
+  totalResources,
+  BUILDING_COST,
+  MARKET_RATE_DEFAULT,
+  MARKET_RATE_COMM,
+} from './types';
 import {
   routeAt,
   violatesDistanceRule,
@@ -142,6 +149,10 @@ function applyPlay(g: BoardGraph, state: GameState, move: Move, playerId: string
       return handleBuild(g, state, move, playerId);
     case 'BUILD_ROUTE':
       return handleBuildRoute(g, state, move, playerId);
+    case 'TRADE_MARKET':
+      return handleTradeMarket(state, move, playerId);
+    case 'TRADE_PLAYER':
+      return handleTradePlayer(state, move, playerId);
     default:
       return fail(state, `Move ${move.type} not handled yet.`);
   }
@@ -305,5 +316,53 @@ function handleBuildRoute(
   const next = clone(state);
   next.players[idx].resources = payCost(me.resources, BUILDING_COST.ROUTE);
   next.routes.push({ edgeId: e, ownerId: playerId });
+  return { state: next };
+}
+
+function handleTradeMarket(
+  state: GameState,
+  move: Extract<Move, { type: 'TRADE_MARKET' }>,
+  playerId: string,
+): ApplyResult {
+  if (playerId !== state.activePlayerId) return fail(state, 'Not your turn.');
+  if (state.turnPhase !== 'ACTIONS') return fail(state, 'Roll before trading.');
+  if (move.give === move.receive) return fail(state, 'Cannot trade a resource for itself.');
+  const idx = playerIndex(state, playerId);
+  const me = state.players[idx];
+  const rate = me.hasCommTower ? MARKET_RATE_COMM : MARKET_RATE_DEFAULT;
+  if (me.resources[move.give] < rate) return fail(state, `Need ${rate} ${move.give}.`);
+  const next = clone(state);
+  next.players[idx].resources[move.give] -= rate;
+  next.players[idx].resources[move.receive] += 1;
+  return { state: next };
+}
+
+function handleTradePlayer(
+  state: GameState,
+  move: Extract<Move, { type: 'TRADE_PLAYER' }>,
+  playerId: string,
+): ApplyResult {
+  if (playerId !== state.activePlayerId) return fail(state, 'Not your turn.');
+  if (state.turnPhase !== 'ACTIONS') return fail(state, 'Roll before trading.');
+  if (!move.accepted) return { state }; // declined offer: no-op
+  const meIdx = playerIndex(state, playerId);
+  const oppIdx = meIdx === 0 ? 1 : 0;
+  const me = state.players[meIdx];
+  const opp = state.players[oppIdx];
+  for (const [r, amt] of Object.entries(move.offer) as [Resource, number][]) {
+    if (me.resources[r] < amt) return fail(state, `You lack ${r}.`);
+  }
+  for (const [r, amt] of Object.entries(move.want) as [Resource, number][]) {
+    if (opp.resources[r] < amt) return fail(state, `Opponent lacks ${r}.`);
+  }
+  const next = clone(state);
+  for (const [r, amt] of Object.entries(move.offer) as [Resource, number][]) {
+    next.players[meIdx].resources[r] -= amt;
+    next.players[oppIdx].resources[r] += amt;
+  }
+  for (const [r, amt] of Object.entries(move.want) as [Resource, number][]) {
+    next.players[oppIdx].resources[r] -= amt;
+    next.players[meIdx].resources[r] += amt;
+  }
   return { state: next };
 }
