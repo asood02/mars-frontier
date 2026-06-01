@@ -57,6 +57,14 @@ export const BUILDING_META: Record<
 export type Buildable = keyof typeof BUILDING_META;
 export const BUILDABLES = Object.keys(BUILDING_META) as Buildable[];
 
+// Distinct per-seat player colors (Red, Green, Blue, Yellow) for up to 4 players.
+export const PLAYER_COLORS = ['#ef4444', '#22c55e', '#3b82f6', '#f5c518'];
+export const PLAYER_COLOR_NAMES = ['Red', 'Green', 'Blue', 'Yellow'];
+
+export function playerColorByIndex(i: number): string {
+  return PLAYER_COLORS[i] ?? '#94a3b8';
+}
+
 // Terrain label(s) whose production yields this resource (inverts TERRAIN_RESOURCE).
 export function producedByTerrains(resource: Resource): string[] {
   return (Object.keys(TERRAIN_META) as Terrain[])

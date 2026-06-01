@@ -7,7 +7,7 @@ import Hex from './Hex';
 import Edge from './Edge';
 import Vertex from './Vertex';
 import TerrainDefs from './TerrainDefs';
-import { RESOURCE_META } from '../format';
+import { RESOURCE_META, playerColorByIndex } from '../format';
 import type { Move } from '../../game/types';
 
 export default function Board() {
@@ -84,8 +84,11 @@ export default function Board() {
     return null;
   };
 
-  const ownerOf = (id: string | undefined): 'p1' | 'p2' | null =>
-    id === 'p1' ? 'p1' : id === 'p2' ? 'p2' : null;
+  const colorOf = (id: string | undefined): string | null => {
+    if (!id) return null;
+    const i = game.players.findIndex((p) => p.id === id);
+    return i < 0 ? null : playerColorByIndex(i);
+  };
 
   const corners = (hid: string): [number, number][] => {
     const [cx, cy] = g.hexPos[hid];
@@ -155,7 +158,7 @@ export default function Board() {
             key={eid}
             a={g.vertexPos[a]}
             b={g.vertexPos[b]}
-            owner={ownerOf(route?.ownerId)}
+            color={colorOf(route?.ownerId)}
             legal={!!move}
             onClick={() => move && dispatch(move)}
           />
@@ -169,7 +172,7 @@ export default function Board() {
             key={vid}
             pos={g.vertexPos[vid]}
             kind={b?.kind ?? null}
-            owner={ownerOf(b?.ownerId)}
+            color={colorOf(b?.ownerId)}
             legal={!!move}
             onClick={() => move && dispatch(move)}
           />
