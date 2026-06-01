@@ -30,6 +30,7 @@ export interface BoardGraph {
   vertexEdges: Record<string, string[]>; // vertexId -> incident edgeIds
   edgeVertices: Record<string, [string, string]>; // edgeId -> its 2 vertexIds
   vertexNeighbors: Record<string, string[]>; // vertexId -> vertices one edge away
+  hexNeighbors: Record<string, string[]>; // hexId -> adjacent hexIds (shared edge)
   vertexPos: Record<string, [number, number]>;
   hexPos: Record<string, [number, number]>;
   edgePos: Record<string, [number, number]>; // midpoint
@@ -38,6 +39,35 @@ export interface BoardGraph {
 
 export function hexId(q: number, r: number): string {
   return `h.${q}.${r}`;
+}
+
+// The six axial neighbor directions for a hex.
+const AXIAL_DIRS: ReadonlyArray<readonly [number, number]> = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+  [1, -1],
+  [-1, 1],
+];
+
+// hexId -> adjacent hexIds present on the board (share an edge).
+export function hexAdjacency(): Record<string, string[]> {
+  const coords = hexCoords();
+  const present = new Set(coords.map((c) => hexId(c.q, c.r)));
+  const out: Record<string, string[]> = {};
+  for (const { q, r } of coords) {
+    out[hexId(q, r)] = AXIAL_DIRS.map(([dq, dr]) => hexId(q + dq, r + dr)).filter((id) =>
+      present.has(id),
+    );
+  }
+  return out;
+}
+
+// Catan-style probability pips: how many dots a number token shows
+// (frequency of that sum on 2d6). 2/12→1 … 6/8→5.
+export function numberPips(n: number): number {
+  return 6 - Math.abs(7 - n);
 }
 
 export function hexCoords(): Array<{ q: number; r: number }> {
@@ -159,6 +189,7 @@ export function buildBoardGraph(): BoardGraph {
     vertexEdges,
     edgeVertices,
     vertexNeighbors,
+    hexNeighbors: hexAdjacency(),
     vertexPos,
     hexPos,
     edgePos,
@@ -190,17 +221,93 @@ const NUMBER_BAG: number[] = [
   12,
 ];
 
-export function generateHexes(seed: number): Hex[] {
-  const rand = mulberry32(seed);
-  const coords = hexCoords();
-  const terrains = shuffle(TERRAIN_BAG, rand);
-  const numbers = shuffle(NUMBER_BAG, rand);
-  let ni = 0;
-  return coords.map((c, i) => {
-    const terrain = terrains[i];
-    const number = terrain === 'LAKE' ? null : numbers[ni++];
-    return { id: hexId(c.q, c.r), q: c.q, r: c.r, terrain, number };
+// Adjacent slot-index pairs over a list of coords, in slot space.
+function adjacentPairs(coords: Array<{ q: number; r: number }>): Array<[number, number]> {
+  const idx = new Map(coords.map((c, i) => [hexId(c.q, c.r), i]));
+  const pairs: Array<[number, number]> = [];
+  coords.forEach((c, i) => {
+    for (const [dq, dr] of AXIAL_DIRS) {
+      const j = idx.get(hexId(c.q + dq, c.r + dr));
+      if (j !== undefined && j > i) pairs.push([i, j]);
+    }
   });
+  return pairs;
+}
+
+// Bounded randomized search: shuffle `items` into slots, minimizing the summed
+// `cost` over adjacent pairs. Deterministic for a given rand stream; stops early
+// on a zero-cost layout. Returns the best assignment found.
+function searchLayout<T>(
+  items: readonly T[],
+  pairs: Array<[number, number]>,
+  cost: (a: T, b: T) => number,
+  rand: () => number,
+  iters = 4000,
+): T[] {
+  let best = items.slice();
+  let bestCost = Infinity;
+  for (let it = 0; it < iters; it++) {
+    const arr = shuffle(items, rand);
+    let c = 0;
+    for (const [a, b] of pairs) c += cost(arr[a], arr[b]);
+    if (c < bestCost) {
+      bestCost = c;
+      best = arr;
+      if (c === 0) break;
+    }
+  }
+  return best;
+}
+
+const isRed = (n: number) => n === 6 || n === 8;
+
+// Generate a balanced board: terrains spread out (few same-terrain neighbors),
+// and number tokens with no two equal numbers adjacent and no two high-odds
+// (6/8) tiles adjacent — an even probability field. Deterministic per seed.
+export function generateHexes(seed: number): Hex[] {
+  const coords = hexCoords();
+  const pairs = adjacentPairs(coords);
+
+  // 1) Terrain: minimize adjacent same-terrain pairs.
+  const terrains = searchLayout(
+    TERRAIN_BAG,
+    pairs,
+    (a, b) => (a === b ? 1 : 0),
+    mulberry32(seed >>> 0),
+  );
+
+  // 2) Numbers over the non-LAKE slots only.
+  const nonLake: number[] = [];
+  coords.forEach((_, i) => {
+    if (terrains[i] !== 'LAKE') nonLake.push(i);
+  });
+  const slotOf = new Map(nonLake.map((coordIdx, slot) => [coordIdx, slot]));
+  const numPairs: Array<[number, number]> = [];
+  for (const [a, b] of pairs) {
+    const sa = slotOf.get(a);
+    const sb = slotOf.get(b);
+    if (sa !== undefined && sb !== undefined) numPairs.push([sa, sb]);
+  }
+  const numLayout = searchLayout(
+    NUMBER_BAG,
+    numPairs,
+    (a, b) => (a === b ? 4 : 0) + (isRed(a) && isRed(b) ? 2 : 0),
+    mulberry32((seed ^ 0x9e3779b9) >>> 0),
+    12000,
+  );
+
+  const numberByCoord = new Array<number | null>(coords.length).fill(null);
+  nonLake.forEach((coordIdx, slot) => {
+    numberByCoord[coordIdx] = numLayout[slot];
+  });
+
+  return coords.map((c, i) => ({
+    id: hexId(c.q, c.r),
+    q: c.q,
+    r: c.r,
+    terrain: terrains[i],
+    number: numberByCoord[i],
+  }));
 }
 
 export function generateBoard(seed: number): BoardData {
