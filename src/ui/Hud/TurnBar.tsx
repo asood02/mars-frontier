@@ -1,5 +1,6 @@
 import { useGame } from '../../store';
 import { playerVP } from '../../game/scoring';
+import { playerColorByIndex } from '../format';
 
 export default function TurnBar() {
   const game = useGame((s) => s.game)!;
@@ -8,15 +9,18 @@ export default function TurnBar() {
   return (
     <div className="flex items-center justify-between gap-4 px-6 py-3 bg-white/5 backdrop-blur border-b border-white/10">
       <div className="flex items-center gap-4 min-w-0 flex-wrap">
-        {game.players.map((p) => {
+        {game.players.map((p, i) => {
           const active = p.id === game.activePlayerId;
+          const color = playerColorByIndex(i);
           return (
             <div
               key={p.id}
-              className={`flex items-center gap-2 font-display ${active ? 'text-mars' : 'text-white/50'}`}
+              className={`flex items-center gap-2 font-display ${active ? '' : 'opacity-60'}`}
+              style={{ color }}
             >
               <span
-                className={`w-2 h-2 rounded-full ${active ? 'bg-mars animate-pulse' : 'bg-white/20'}`}
+                className={`w-2.5 h-2.5 rounded-full ${active ? 'animate-pulse' : ''}`}
+                style={{ backgroundColor: color }}
               />
               <span className="truncate max-w-[7rem]">{p.name}</span>
               <span className="text-2xl font-bold">{playerVP(game, p.id)}</span>
