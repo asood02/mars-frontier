@@ -17,7 +17,7 @@ import {
   canAfford,
   payCost,
 } from './rules';
-import { produce } from './production';
+import { produce, produceOnSeven } from './production';
 import { playerVP, recomputeLongestRoute } from './scoring';
 import { WIN_VP } from './types';
 import { techById, nextResearchable } from './tech';
@@ -189,12 +189,19 @@ function handleRoll(
   next.lastRoll = [d1, d2];
 
   if (sum === 7) {
+    next.stats[playerId].sevensRolled += 1;
     const pending: Record<string, number> = {};
     for (const p of next.players) {
+      if (p.techs.includes('BIO2')) continue; // Storm Shelter: ignore discard
       const n = totalResources(p.resources);
       if (n > DUST_DISCARD_THRESHOLD) pending[p.id] = Math.floor(n / 2);
     }
     next.pendingDiscards = pending;
+    // BIO3: each owner's buildings produce on the 7 (stacks with BIO2).
+    for (const p of next.players) {
+      const bonus = produceOnSeven(g, next, p.id);
+      (Object.keys(bonus) as Resource[]).forEach((r) => (p.resources[r] += bonus[r]));
+    }
     next.turnPhase = Object.keys(pending).length > 0 ? 'DISCARD' : 'MOVE_STORM';
     return { state: next };
   }
@@ -231,6 +238,7 @@ function handleDiscard(
   const nres = next.players[idx].resources;
   for (const [r, amt] of Object.entries(cards) as [Resource, number][]) nres[r] -= amt;
   delete next.pendingDiscards[playerId];
+  next.stats[playerId].dustDamageTaken += 1;
   if (Object.keys(next.pendingDiscards).length === 0) next.turnPhase = 'MOVE_STORM';
   return { state: next };
 }
@@ -247,6 +255,7 @@ function handleMoveDustStorm(
   if (move.hexId === state.dustStormHexId) return fail(state, 'Dust Storm cannot stay put.');
   const next = clone(state);
   next.dustStormHexId = move.hexId;
+  next.stats[playerId].dustPlacements += 1;
   next.turnPhase = 'ACTIONS';
   return { state: next };
 }
@@ -280,9 +289,10 @@ function handleBuild(
     if (!existing || existing.ownerId !== playerId || existing.kind !== 'HABITAT') {
       return fail(state, 'Dome must upgrade your own Habitat.');
     }
-    if (!canAfford(me.resources, BUILDING_COST.DOME)) return fail(state, 'Cannot afford Dome.');
+    const domeCost = me.techs.includes('ENG2') ? { ORE: 1, ENG: 3 } : BUILDING_COST.DOME;
+    if (!canAfford(me.resources, domeCost)) return fail(state, 'Cannot afford Dome.');
     const next = clone(state);
-    next.players[idx].resources = payCost(me.resources, BUILDING_COST.DOME);
+    next.players[idx].resources = payCost(me.resources, domeCost);
     const b = buildingAt(next.buildings, move.locationId)!;
     b.kind = 'DOME';
     return { state: next };
@@ -328,10 +338,14 @@ function handleBuildRoute(
   if (!touchesOwn) return fail(state, 'Route must touch your network.');
   const idx = playerIndex(state, playerId);
   const me = state.players[idx];
-  if (!canAfford(me.resources, BUILDING_COST.ROUTE)) return fail(state, 'Cannot afford Route.');
+  const free = me.techs.includes('ENG3') && state.stats[playerId].routesThisTurn < 2;
+  if (!free && !canAfford(me.resources, BUILDING_COST.ROUTE)) {
+    return fail(state, 'Cannot afford Route.');
+  }
   const next = clone(state);
-  next.players[idx].resources = payCost(me.resources, BUILDING_COST.ROUTE);
+  if (!free) next.players[idx].resources = payCost(me.resources, BUILDING_COST.ROUTE);
   next.routes.push({ edgeId: e, ownerId: playerId });
+  next.stats[playerId].routesThisTurn += 1;
   next.longestRouteHolderId = recomputeLongestRoute(g, next);
   return { state: next };
 }
@@ -346,7 +360,8 @@ function handleTradeMarket(
   if (move.give === move.receive) return fail(state, 'Cannot trade a resource for itself.');
   const idx = playerIndex(state, playerId);
   const me = state.players[idx];
-  const rate = me.hasCommTower ? MARKET_RATE_COMM : MARKET_RATE_DEFAULT;
+  const rate =
+    me.hasCommTower || me.techs.includes('ASTRO3') ? MARKET_RATE_COMM : MARKET_RATE_DEFAULT;
   if (me.resources[move.give] < rate) return fail(state, `Need ${rate} ${move.give}.`);
   const next = clone(state);
   next.players[idx].resources[move.give] -= rate;
@@ -413,6 +428,7 @@ function handleEndTurn(state: GameState, playerId: string): ApplyResult {
   next.turn += 1;
   next.turnPhase = 'AWAIT_ROLL';
   next.lastRoll = null;
+  next.stats[playerId].routesThisTurn = 0;
   // Win is checked at the START of a turn (spec §3.10).
   if (playerVP(next, next.activePlayerId) >= WIN_VP) {
     next.phase = 'gameover';

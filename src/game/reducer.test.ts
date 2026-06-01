@@ -378,3 +378,59 @@ describe('RESEARCH', () => {
     expect(applyMove(s, { type: 'RESEARCH', techId: 'ENG1' }, 'p1').error).toMatch(/RES/);
   });
 });
+
+describe('tech effects in the reducer', () => {
+  function playState(): GameState {
+    const s = newGame();
+    s.phase = 'play';
+    s.turn = 1;
+    s.activePlayerId = 'p1';
+    s.turnPhase = 'ACTIONS';
+    const edge = g.edges[0];
+    const [v] = g.edgeVertices[edge];
+    s.buildings = [{ vertexId: v, ownerId: 'p1', kind: 'HABITAT' }];
+    s.routes = [{ edgeId: edge, ownerId: 'p1' }];
+    return s;
+  }
+
+  it('ENG2 makes a Dome cost 1 ORE + 3 ENG', () => {
+    const s = playState();
+    s.players[0].techs = ['ENG1', 'ENG2'];
+    s.players[0].resources = { O2: 0, H2O: 0, ORE: 1, ENG: 3, RES: 0 };
+    const v = s.buildings[0].vertexId;
+    const r = applyMove(s, { type: 'BUILD', building: 'DOME', locationId: v }, 'p1');
+    expect(r.error).toBeUndefined();
+    expect(r.state.players[0].resources).toEqual({ O2: 0, H2O: 0, ORE: 0, ENG: 0, RES: 0 });
+  });
+
+  it('ENG3 makes the first two routes free', () => {
+    const s = playState();
+    s.players[0].techs = ['ENG1', 'ENG2', 'ENG3'];
+    s.players[0].resources = { O2: 0, H2O: 0, ORE: 0, ENG: 0, RES: 0 };
+    const start = s.buildings[0].vertexId;
+    const e1 = g.vertexEdges[start].find((e) => e !== s.routes[0].edgeId)!;
+    const r = applyMove(s, { type: 'BUILD_ROUTE', edgeId: e1 }, 'p1');
+    expect(r.error).toBeUndefined();
+    expect(r.state.stats['p1'].routesThisTurn).toBe(1);
+  });
+
+  it('ASTRO3 gives a 2:1 market without a Comm Tower', () => {
+    const s = playState();
+    s.players[0].techs = ['ASTRO1', 'ASTRO2', 'ASTRO3'];
+    s.players[0].resources = { O2: 2, H2O: 0, ORE: 0, ENG: 0, RES: 0 };
+    const r = applyMove(s, { type: 'TRADE_MARKET', give: 'O2', receive: 'RES' }, 'p1');
+    expect(r.state.players[0].resources.O2).toBe(0);
+    expect(r.state.players[0].resources.RES).toBe(1);
+  });
+
+  it('BIO2 owner never owes a discard on a 7', () => {
+    const s = playState();
+    s.turnPhase = 'AWAIT_ROLL';
+    s.players[0].techs = ['BIO1', 'BIO2'];
+    s.players[0].resources = { O2: 8, H2O: 0, ORE: 0, ENG: 0, RES: 0 };
+    const r = applyMove(s, { type: 'ROLL', roll: [3, 4] }, 'p1');
+    expect(r.state.pendingDiscards['p1']).toBeUndefined();
+    expect(r.state.turnPhase).toBe('MOVE_STORM');
+    expect(r.state.stats['p1'].sevensRolled).toBe(1);
+  });
+});
