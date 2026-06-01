@@ -29,6 +29,13 @@ npm run dev            # in another terminal
 Point the client at a different relay with `VITE_WS_URL` (see `.env.example`). The relay is a tiny
 stateless hub; deploy it anywhere that runs Node + WebSockets to play over the internet.
 
+## Deploy
+
+See [`DEPLOY.md`](./DEPLOY.md). In short: the static frontend goes on any static host
+(Netlify/Vercel — configs included) and the WebSocket relay goes on any Node/container host
+(Render blueprint `render.yaml` or the included `Dockerfile`). Point the frontend at the relay
+with `VITE_WS_URL=wss://<your-relay>` and rebuild.
+
 ## Scripts
 
 | Script | Purpose |
