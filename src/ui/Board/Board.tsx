@@ -7,6 +7,7 @@ import Hex from './Hex';
 import Edge from './Edge';
 import Vertex from './Vertex';
 import TerrainDefs from './TerrainDefs';
+import { RESOURCE_META } from '../format';
 import type { Move } from '../../game/types';
 
 export default function Board() {
@@ -121,6 +122,27 @@ export default function Board() {
             {stormTarget && (
               <polygon points={corners(hid).map((p) => p.join(',')).join(' ')} fill="#facc15" opacity={0.15} />
             )}
+          </g>
+        );
+      })}
+      {/* Trade depots (ports) on the coast */}
+      {(game.board.ports ?? []).map((port) => {
+        const [vx, vy] = g.vertexPos[port.vertexId];
+        const len = Math.hypot(vx, vy) || 1;
+        const ox = vx + (vx / len) * 0.5; // pushed outward from board center
+        const oy = vy + (vy / len) * 0.5;
+        const color = port.resource ? RESOURCE_META[port.resource].color : '#e5e7eb';
+        const glyph = port.resource ? RESOURCE_META[port.resource].glyph : '★';
+        return (
+          <g key={`port-${port.vertexId}`} aria-label="Trade depot">
+            <line x1={vx} y1={vy} x2={ox} y2={oy} stroke={color} strokeWidth={0.03} strokeDasharray="0.06 0.05" opacity={0.7} />
+            <circle cx={ox} cy={oy} r={0.2} fill="#0a0e1ae6" stroke={color} strokeWidth={0.035} />
+            <text x={ox} y={oy - 0.04} textAnchor="middle" dominantBaseline="central" fontSize={0.16} fontWeight="bold" fill={color}>
+              {glyph}
+            </text>
+            <text x={ox} y={oy + 0.1} textAnchor="middle" dominantBaseline="central" fontSize={0.085} fill="#cbd5e1">
+              {port.rate}:1
+            </text>
           </g>
         );
       })}

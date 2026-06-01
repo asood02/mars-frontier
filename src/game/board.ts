@@ -2,7 +2,8 @@
 // Pointy-top axial hexes. Vertices/edges are shared between neighboring hexes
 // by deduping corner pixel positions.
 
-import type { BoardData, Hex, Terrain } from './types';
+import type { BoardData, Hex, Terrain, Resource, Port } from './types';
+import { RESOURCES } from './types';
 import { mulberry32, shuffle } from './rng';
 
 export const BOARD_RADIUS = 3;
@@ -394,11 +395,37 @@ export function generateHexes(seed: number, cfg: BoardConfig = DEFAULT_BOARD_CON
   }));
 }
 
+// Place trade depots on spaced-out coastal vertices (those touching < 3 hexes).
+// One 2:1 depot per resource, plus a few generic 2:1 depots, scaled to the board.
+// Deterministic per seed.
+export function generatePorts(graph: BoardGraph, seed: number, count: number): Port[] {
+  const coastal = graph.vertices.filter((v) => graph.vertexHexes[v].length < 3);
+  const rand = mulberry32((seed ^ 0x50f7c011) >>> 0);
+  const ordered = shuffle(coastal, rand);
+
+  const chosen: string[] = [];
+  const blocked = new Set<string>();
+  for (const v of ordered) {
+    if (blocked.has(v)) continue;
+    chosen.push(v);
+    blocked.add(v);
+    for (const n of graph.vertexNeighbors[v]) blocked.add(n);
+    if (chosen.length >= count) break;
+  }
+
+  const kinds: (Resource | null)[] = [...RESOURCES];
+  while (kinds.length < chosen.length) kinds.push(null); // remaining depots are generic
+  const assigned = shuffle(kinds.slice(0, chosen.length), rand);
+  return chosen.map((vertexId, i) => ({ vertexId, resource: assigned[i] ?? null, rate: 2 }));
+}
+
 export function generateBoard(seed: number, cfg: BoardConfig = DEFAULT_BOARD_CONFIG): BoardData {
   const graph = buildBoardGraph(cfg.radius, cfg.removed);
+  const portCount = 5 + Math.round(graph.hexIds.length / 20);
   return {
     hexes: generateHexes(seed, cfg),
     vertices: graph.vertices,
     edges: graph.edges,
+    ports: generatePorts(graph, seed, portCount),
   };
 }

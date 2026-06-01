@@ -6,8 +6,6 @@ import {
   DUST_DISCARD_THRESHOLD,
   totalResources,
   BUILDING_COST,
-  MARKET_RATE_DEFAULT,
-  MARKET_RATE_COMM,
 } from './types';
 import {
   routeAt,
@@ -16,6 +14,7 @@ import {
   playerRouteEndpoints,
   canAfford,
   payCost,
+  marketRateFor,
 } from './rules';
 import { produce, produceOnSeven } from './production';
 import { playerVP, recomputeLongestRoute } from './scoring';
@@ -360,8 +359,7 @@ function handleTradeMarket(
   if (move.give === move.receive) return fail(state, 'Cannot trade a resource for itself.');
   const idx = playerIndex(state, playerId);
   const me = state.players[idx];
-  const rate =
-    me.hasCommTower || me.techs.includes('ASTRO3') ? MARKET_RATE_COMM : MARKET_RATE_DEFAULT;
+  const rate = marketRateFor(state, playerId, move.give);
   if (me.resources[move.give] < rate) return fail(state, `Need ${rate} ${move.give}.`);
   const next = clone(state);
   next.players[idx].resources[move.give] -= rate;
