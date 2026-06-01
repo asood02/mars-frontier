@@ -63,4 +63,17 @@ describe('createGame', () => {
     expect(g.turnPhase).toBe('AWAIT_ROLL');
     expect(g.pendingDiscards).toEqual({});
   });
+
+  it('initializes longest-route holder and per-player stats', () => {
+    const g = createGame(opts);
+    expect(g.longestRouteHolderId).toBeNull();
+    expect(g.stats['p1']).toEqual({
+      dustPlacements: 0,
+      tradesWithOpponent: 0,
+      sevensRolled: 0,
+      dustDamageTaken: 0,
+      routesThisTurn: 0,
+    });
+    expect(g.stats['p2'].routesThisTurn).toBe(0);
+  });
 });

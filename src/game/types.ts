@@ -6,6 +6,14 @@ export type BuildingKind = 'HABITAT' | 'DOME' | 'COMM_TOWER';
 export type Phase = 'lobby' | 'setup1' | 'setup2' | 'play' | 'gameover';
 export type TurnPhase = 'AWAIT_ROLL' | 'DISCARD' | 'MOVE_STORM' | 'ACTIONS';
 
+export interface PlayerStats {
+  dustPlacements: number; // times this player moved the Dust Storm
+  tradesWithOpponent: number; // accepted player-to-player trades
+  sevensRolled: number; // 7s this player rolled
+  dustDamageTaken: number; // times this player completed a 7-roll discard
+  routesThisTurn: number; // routes built in the current turn (reset on END_TURN)
+}
+
 export interface Hex {
   id: string;
   q: number;
@@ -61,6 +69,8 @@ export interface GameState {
   lastRoll: [number, number] | null;
   turnPhase: TurnPhase;
   pendingDiscards: Record<string, number>; // playerId -> cards still owed (7-roll)
+  longestRouteHolderId: string | null;
+  stats: Record<string, PlayerStats>;
   missionDeck: string[]; // remaining face-down mission ids
   missionsOnBoard: string[]; // 3 visible mission ids
   log: GameEvent[];
@@ -102,6 +112,16 @@ export function emptyResources(): Record<Resource, number> {
 
 export function totalResources(r: Record<Resource, number>): number {
   return RESOURCES.reduce((sum, k) => sum + r[k], 0);
+}
+
+export function emptyStats(): PlayerStats {
+  return {
+    dustPlacements: 0,
+    tradesWithOpponent: 0,
+    sevensRolled: 0,
+    dustDamageTaken: 0,
+    routesThisTurn: 0,
+  };
 }
 
 // Build costs (spec §3.5).
