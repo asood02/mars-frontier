@@ -40,36 +40,36 @@ export default function Vertex(props: {
       )}
 
       {kind === 'HABITAT' && (
-        <g stroke={ink} strokeWidth={0.025} strokeLinejoin="round">
+        <g stroke={ink} strokeWidth={0.03} strokeLinejoin="round">
           {/* domed pod on a base, with a small airlock */}
-          <rect x={x - 0.13} y={y + 0.02} width={0.26} height={0.05} rx={0.015} fill={c} />
-          <path d={`M ${x - 0.13} ${y + 0.03} A 0.13 0.13 0 0 1 ${x + 0.13} ${y + 0.03} Z`} fill={c} />
-          <rect x={x - 0.035} y={y - 0.01} width={0.07} height={0.07} fill={ink} opacity={0.55} stroke="none" />
+          <rect x={x - 0.17} y={y + 0.03} width={0.34} height={0.07} rx={0.02} fill={c} />
+          <path d={`M ${x - 0.17} ${y + 0.04} A 0.17 0.17 0 0 1 ${x + 0.17} ${y + 0.04} Z`} fill={c} />
+          <rect x={x - 0.045} y={y - 0.02} width={0.09} height={0.1} fill={ink} opacity={0.55} stroke="none" />
         </g>
       )}
 
       {kind === 'DOME' && (
-        <g stroke={ink} strokeWidth={0.028} strokeLinejoin="round">
-          <circle cx={x} cy={y} r={0.18} fill={c} />
+        <g stroke={ink} strokeWidth={0.035} strokeLinejoin="round">
+          <circle cx={x} cy={y} r={0.23} fill={c} />
           {/* geodesic struts */}
-          <g stroke={ink} strokeWidth={0.018} opacity={0.55} fill="none">
-            <path d={`M ${x - 0.18} ${y} h 0.36`} />
-            <path d={`M ${x} ${y - 0.18} v 0.36`} />
-            <path d={`M ${x - 0.13} ${y - 0.13} L ${x + 0.13} ${y + 0.13}`} />
-            <path d={`M ${x - 0.13} ${y + 0.13} L ${x + 0.13} ${y - 0.13}`} />
+          <g stroke={ink} strokeWidth={0.022} opacity={0.55} fill="none">
+            <path d={`M ${x - 0.23} ${y} h 0.46`} />
+            <path d={`M ${x} ${y - 0.23} v 0.46`} />
+            <path d={`M ${x - 0.16} ${y - 0.16} L ${x + 0.16} ${y + 0.16}`} />
+            <path d={`M ${x - 0.16} ${y + 0.16} L ${x + 0.16} ${y - 0.16}`} />
           </g>
-          <circle cx={x} cy={y} r={0.05} fill="#ffffff" opacity={0.85} stroke="none" />
+          <circle cx={x} cy={y} r={0.06} fill="#ffffff" opacity={0.85} stroke="none" />
         </g>
       )}
 
       {kind === 'COMM_TOWER' && (
-        <g stroke={ink} strokeWidth={0.025} strokeLinejoin="round">
+        <g stroke={ink} strokeWidth={0.03} strokeLinejoin="round">
           {/* lattice mast */}
-          <polygon points={`${x - 0.1},${y + 0.14} ${x + 0.1},${y + 0.14} ${x + 0.04},${y - 0.12} ${x - 0.04},${y - 0.12}`} fill={c} />
-          <line x1={x - 0.06} y1={y + 0.02} x2={x + 0.06} y2={y + 0.02} stroke={ink} strokeWidth={0.018} />
+          <polygon points={`${x - 0.13},${y + 0.18} ${x + 0.13},${y + 0.18} ${x + 0.05},${y - 0.15} ${x - 0.05},${y - 0.15}`} fill={c} />
+          <line x1={x - 0.08} y1={y + 0.03} x2={x + 0.08} y2={y + 0.03} stroke={ink} strokeWidth={0.022} />
           {/* dish */}
-          <circle cx={x} cy={y - 0.15} r={0.07} fill={c} />
-          <circle cx={x} cy={y - 0.15} r={0.025} fill={ink} stroke="none" />
+          <circle cx={x} cy={y - 0.19} r={0.09} fill={c} />
+          <circle cx={x} cy={y - 0.19} r={0.032} fill={ink} stroke="none" />
         </g>
       )}
     </g>

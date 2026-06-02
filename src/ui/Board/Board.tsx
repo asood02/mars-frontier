@@ -8,6 +8,7 @@ import Edge from './Edge';
 import Vertex from './Vertex';
 import TerrainDefs from './TerrainDefs';
 import { RESOURCE_META, playerColorByIndex } from '../format';
+import { ResourceGlyph } from '../ResourceGlyph';
 import type { Move } from '../../game/types';
 
 export default function Board() {
@@ -135,15 +136,18 @@ export default function Board() {
         const ox = vx + (vx / len) * 0.5; // pushed outward from board center
         const oy = vy + (vy / len) * 0.5;
         const color = port.resource ? RESOURCE_META[port.resource].color : '#e5e7eb';
-        const glyph = port.resource ? RESOURCE_META[port.resource].glyph : '★';
         return (
           <g key={`port-${port.vertexId}`} aria-label="Trade depot">
             <line x1={vx} y1={vy} x2={ox} y2={oy} stroke={color} strokeWidth={0.03} strokeDasharray="0.06 0.05" opacity={0.7} />
-            <circle cx={ox} cy={oy} r={0.2} fill="#0a0e1ae6" stroke={color} strokeWidth={0.035} />
-            <text x={ox} y={oy - 0.04} textAnchor="middle" dominantBaseline="central" fontSize={0.16} fontWeight="bold" fill={color}>
-              {glyph}
-            </text>
-            <text x={ox} y={oy + 0.1} textAnchor="middle" dominantBaseline="central" fontSize={0.085} fill="#cbd5e1">
+            <circle cx={ox} cy={oy} r={0.23} fill="#0a0e1aee" stroke={color} strokeWidth={0.04} />
+            {port.resource ? (
+              <ResourceGlyph resource={port.resource} x={ox - 0.13} y={oy - 0.165} size={0.26} color={color} />
+            ) : (
+              <text x={ox} y={oy - 0.04} textAnchor="middle" dominantBaseline="central" fontSize={0.2} fontWeight="bold" fill={color}>
+                ★
+              </text>
+            )}
+            <text x={ox} y={oy + 0.12} textAnchor="middle" dominantBaseline="central" fontSize={0.09} fontWeight="bold" fill="#e5e7eb">
               {port.rate}:1
             </text>
           </g>
