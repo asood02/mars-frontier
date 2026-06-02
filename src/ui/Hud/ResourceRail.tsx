@@ -1,5 +1,6 @@
 import { useGame, viewerId } from '../../store';
 import { RESOURCE_META, resourceHelp } from '../format';
+import { ResourceGlyph } from '../ResourceGlyph';
 import { RESOURCES } from '../../game/types';
 
 export default function ResourceRail() {
@@ -16,12 +17,10 @@ export default function ResourceRail() {
           <div
             key={r}
             title={resourceHelp(r)}
-            className="flex flex-col items-center rounded-xl bg-black/30 py-2"
+            className="flex flex-col items-center gap-1 rounded-xl bg-black/30 py-2"
           >
-            <span style={{ color: RESOURCE_META[r].color }} className="text-base leading-none">
-              {RESOURCE_META[r].glyph}
-            </span>
-            <span className="font-display text-xl font-bold leading-tight">{me.resources[r]}</span>
+            <ResourceGlyph resource={r} size={22} />
+            <span className="font-display text-xl font-bold leading-none">{me.resources[r]}</span>
             <span className="text-[9px] uppercase tracking-wide text-white/35">
               {RESOURCE_META[r].label}
             </span>

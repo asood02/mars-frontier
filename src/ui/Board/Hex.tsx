@@ -1,6 +1,7 @@
 import type { Hex as HexT, Terrain } from '../../game/types';
 import { numberPips } from '../../game/board';
 import { TERRAIN_META, RESOURCE_META } from '../format';
+import { ResourceGlyph } from '../ResourceGlyph';
 
 // Deterministic per-hex PRNG so the drawn terrain features vary tile-to-tile but
 // stay stable across re-renders (seeded from the hex id).
@@ -168,23 +169,19 @@ export default function Hex(props: {
         <g>
           <circle
             cx={cx}
-            cy={cy - 0.46}
-            r={0.245}
-            fill="#160b06e0"
+            cy={cy - 0.5}
+            r={0.3}
+            fill="#160b06ee"
             stroke={RESOURCE_META[meta.produces].color}
-            strokeWidth={0.04}
+            strokeWidth={0.045}
           />
-          <text
-            x={cx}
-            y={cy - 0.45}
-            textAnchor="middle"
-            dominantBaseline="central"
-            fontSize={0.24}
-            fontWeight="bold"
-            fill={RESOURCE_META[meta.produces].color}
-          >
-            {RESOURCE_META[meta.produces].glyph}
-          </text>
+          <ResourceGlyph
+            resource={meta.produces}
+            x={cx - 0.2}
+            y={cy - 0.7}
+            size={0.4}
+            color={RESOURCE_META[meta.produces].color}
+          />
         </g>
       )}
 
